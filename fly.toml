@@ -1,0 +1,19 @@
+# Fly.io 部署配置（备选；新账号无免费档，见 BUILD-NOTES）
+# 人工步骤：flyctl auth login → fly launch（会复用本文件）→ fly secrets set DEEPSEEK_API_KEY=...
+# → fly deploy。试用只有 2 小时机器时间或 7 天，之后需绑卡，最小机器约 $2.19/月。
+app = "ziwei-commercial"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 0
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
