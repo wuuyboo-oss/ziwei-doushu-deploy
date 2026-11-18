@@ -11,15 +11,15 @@
 <style>
 /* ── tokens ─────────────────────────────────────────── */
 :root {
-  --paper: #f2f0f5;
-  --sheet: #fbfafd;
-  --sheet-2: #f6f3f9;
+  --paper: #f6f1e7;
+  --sheet: #fffdf6;
+  --sheet-2: #f3ecdc;
   --ink: #231a31;
   --ink-2: #584d67;
   --ink-3: #8b8199;
   --line: #d8d1e2;
   --line-2: #b9aecb;
-  --zi: #5a2a8c;
+  --zi: #4c1d95;
   --zi-soft: #ebe3f5;
   --zi-faint: rgba(90, 42, 140, .07);
   --zhu: #a83a2f;
@@ -303,13 +303,84 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
   .extra { display: none; }
 }
 
+/* v2: hero / toolbar / legend / dims / star dialog / mobile bar */
+.hero { max-width: 820px; margin: 2px auto 14px; text-align: center; padding: 6px 8px 0; }
+.hero-title { margin: 0; font-family: var(--f-brush); font-weight: 400; font-size: clamp(24px, 5.4vw, 34px); line-height: 1.2; color: var(--zi); }
+.hero-sub { margin: 6px 0 10px; font-size: 14px; color: var(--ink-2); line-height: 1.6; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.hero-chips span { font-size: 12.5px; padding: 2px 10px; border-radius: 999px; background: var(--zi-soft); color: var(--zi); }
+.board-tools { max-width: 820px; margin: 12px auto 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.tool-btn { border: 1px solid var(--line-2); background: var(--sheet); border-radius: 8px; padding: 7px 13px; font-size: 13.5px; color: var(--ink-2); min-height: 38px; }
+.tool-btn:hover { color: var(--zi); border-color: var(--zi); }
+.tool-btn[aria-pressed="true"] { background: var(--zi); border-color: var(--zi); color: var(--sheet); }
+.legend { max-width: 820px; margin: 8px auto 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12.5px; color: var(--ink-3); }
+.legend .hua { width: 16px; height: 16px; font-size: 11px; vertical-align: -3px; margin-right: 2px; }
+.legend-note { margin-left: auto; }
+.tl-head { max-width: 820px; margin: 14px auto 0; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; line-height: 1.7; color: var(--ink-2); }
+.tl-head b { color: var(--zi); }
+.tl-head .tl-now { float: right; border: 1px solid var(--line-2); background: transparent; border-radius: 6px; padding: 3px 10px; font-size: 12.5px; color: var(--ink-2); }
+.dim-grid { display: grid; gap: 12px; margin-top: 10px; }
+.dim-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--sheet-2); }
+.dim-card h3 { margin: 0 0 4px; font-size: 16px; color: var(--zi); }
+.dim-card h3 small { font-size: 12px; color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+.dim-card p { margin: 0 0 6px; font-size: 14px; color: var(--ink-2); }
+.dim-card .dim-stars { font-size: 13px; color: var(--ink); margin-bottom: 6px; }
+.dim-card .dim-stars b { color: var(--zi); }
+.star-key { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.star-key span { font-size: 12.5px; padding: 1px 8px; border-radius: 999px; background: var(--zi-soft); color: var(--zi); }
+#dlgStar .dlg-body h3 { font-size: 15px; color: var(--zi); margin: 14px 0 4px; }
+#dlgStar .dlg-body h3:first-child { margin-top: 0; }
+#dlgStar .dlg-body p { margin: 0 0 8px; font-size: 14px; color: var(--ink-2); }
+.st[data-star] { cursor: pointer; border-radius: 4px; }
+.st[data-star]:hover { background: var(--zi-faint); }
+.mobile-bar { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--sheet); border-top: 1px solid var(--line); padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 8px; }
+.mobile-bar button { flex: 1; min-height: 44px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--sheet); font-size: 14px; color: var(--ink-2); }
+.mobile-bar button.primary { background: var(--zi); border-color: var(--zi); color: var(--sheet); font-weight: 700; }
+.toast { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); background: var(--ink); color: var(--sheet); font-size: 13.5px; padding: 8px 16px; border-radius: 999px; z-index: 40; box-shadow: var(--shadow); }
+.board-col.zoom .board { max-width: 1080px; grid-template-rows: repeat(4, minmax(168px, auto)); }
+.board-col.zoom .st.major { font-size: 18px; }
+.board-col.zoom .palace { padding: 10px; }
+.board-col.zoom .heart { padding: 16px; }
+.board.no-lines .lines { display: none; }
+.board.no-lines .palace.sf { background: var(--sheet); }
+.example-btn { width: 100%; border: 1px dashed var(--line-2); background: transparent; border-radius: 6px; padding: 8px; font-size: 13px; color: var(--ink-2); }
+.example-btn:hover { color: var(--zi); border-color: var(--zi); }
+@media (max-width: 760px) {
+  .board { grid-template-rows: repeat(4, minmax(132px, auto)); }
+  .st { font-size: 12px; } .st.major { font-size: 15px; }
+  .foot { grid-template-columns: auto 1fr auto; gap: 4px; }
+  .foot .dx, .foot .gz { font-size: 10px; }
+  .foot .pname { font-size: 12.5px; }
+  .minors { font-size: 10px; }
+  .heart { padding: 10px; }
+.heart .facts dd small { display: none; }
+.heart-actions { display: grid; grid-template-columns: 1fr 1fr; }
+.heart-actions .ghost-btn { width: 100%; }
+  .facts { font-size: 12.5px; }
+  .who strong { font-size: 24px; }
+  .heart-actions .ghost-btn { font-size: 13px; padding: 7px 11px; min-height: 38px; }
+  .chip { min-height: 38px; padding: 5px 10px; }
+  .tab { padding: 10px 12px; font-size: 14.5px; min-height: 44px; }
+  .panel { padding: 14px 14px 20px; }
+  .stage { padding-bottom: 96px; }
+  .mobile-bar { display: flex; }
+  .legend-note { margin-left: 0; width: 100%; }
+  .hero { margin-bottom: 10px; }
+}
+@media (max-width: 400px) {
+  .board { grid-template-rows: repeat(4, minmax(120px, auto)); }
+  .st.major { font-size: 14px; }
+  .minors { font-size: 9px; }
+  .foot .dx, .foot .gz { font-size: 9px; }
+  .stage { padding-left: 6px; padding-right: 6px; }
+}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="brand">
     <span class="brand-mark">真一紫微</span>
-    <span class="brand-sub">依倪海厦《天纪》体系的紫微斗数排盘</span>
+    <span class="brand-sub">免费排盘 · 不用注册 · AI 深度解盘</span>
   </div>
   <div class="top-actions">
     <button class="icon-btn" id="btnSaved" type="button">命例</button>
@@ -320,12 +391,27 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
 
 <main class="stage">
   <div class="board-col">
+<section class="hero">
+<p class="hero-title">免费排一张你的紫微命盘</p>
+<p class="hero-sub">输入出生日期和时间，十秒出盘：十二宫、主星、格局、四化、大限流年，一次看清。</p>
+<div class="hero-chips"><span>不用注册</span><span>排盘免费</span><span>可保存分享</span><span>AI 深度解盘</span></div>
+</section>
     <div id="mobileFormSlot"></div>
     <div class="board" id="board" aria-label="紫微斗数命盘">
       <div class="heart" id="heart"></div>
       <svg class="lines" id="lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
     </div>
-    <div class="notices" id="notices"></div>
+    <div class="board-tools" role="toolbar" aria-label="命盘工具">
+<button type="button" class="tool-btn" id="btnZoom" aria-pressed="false">放大盘面</button>
+<button type="button" class="tool-btn" id="btnLines" aria-pressed="true">三方四正</button>
+<button type="button" class="tool-btn" id="btnShare">分享命盘</button>
+<button type="button" class="tool-btn" id="btnCopyLink">复制链接</button>
+</div>
+<div class="legend" aria-label="四化图例">
+<span><i class="hua 禄">禄</i>禄·得财</span><span><i class="hua 权">权</i>权·掌控</span><span><i class="hua 科">科</i>科·名声</span><span><i class="hua 忌">忌</i>忌·执着</span>
+<span class="legend-note">点一颗星看星曜解释 · 点一宫看宫位解读</span>
+</div>
+<div class="notices" id="notices"></div>
     <nav class="timeline" id="timeline" aria-label="运限" hidden></nav>
   </div>
 
@@ -381,6 +467,7 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
     <p class="lon-note" id="lonNote">未选城市时按东经 120° 计算</p>
     <p class="form-err" id="formErr" role="alert"></p>
     <button class="go" type="submit">起盘</button>
+<button class="example-btn" type="button" id="btnExample">先看看示例盘（1990-01-01 男 子时）</button>
   </form>
 </template>
 
@@ -419,6 +506,18 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
   <div class="dlg-head"><h2 id="savedTitle">命例</h2><button class="ghost-btn" data-close type="button">关闭</button></div>
   <div class="dlg-body"><ul class="saved" id="savedList"></ul></div>
 </dialog>
+
+<dialog id="dlgStar" aria-labelledby="starTitle">
+<div class="dlg-head"><h2 id="starTitle">星曜</h2><button class="ghost-btn" data-close type="button">关闭</button></div>
+<div class="dlg-body" id="starBody"></div>
+</dialog>
+<nav class="mobile-bar" aria-label="快捷操作">
+<button type="button" data-bar="form">起盘</button>
+<button type="button" data-bar="board">命盘</button>
+<button type="button" data-bar="reading">解盘</button>
+<button type="button" class="primary" data-bar="ai">AI 解盘</button>
+</nav>
+<div id="toast" hidden></div>
 
 <script>
 /* ===== astro.js ===== */
@@ -1947,7 +2046,7 @@ const CITIES = (() => {
   const S = {
     gender: 'male', calendar: 'solar', timeMode: 'clock', lon: null, tz: 8, city: null,
     settings: { ...defaults, ...store.get('settings', {}) },
-    chart: null, patterns: [], horo: null, sel: {}, selPalace: null, tab: 'summary', editing: false,
+    chart: null, patterns: [], horo: null, sel: {}, selPalace: null, tab: 'summary', editing: false, showLines: true,
     sample: null, downloads: null, ai: { running: false, ctl: null, text: '', turns: [], qa: [] },
   };
   const today = new Date();
@@ -1971,7 +2070,7 @@ const CITIES = (() => {
     el.style.gridArea = 'p' + b;
     el.dataset.b = b;
     el.innerHTML = `<span class="ghost" aria-hidden="true">${BRANCHES[b]}</span><div class="body"></div>`;
-    el.addEventListener('click', () => selectPalace(b));
+    el.addEventListener('click', (e) => { const st = e.target.closest('[data-star]'); if (st) { e.stopPropagation(); openStar(st.dataset.star, b); return; } selectPalace(b); });
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPalace(b); } });
     board.insertBefore(el, heart);
     palEls[b] = el;
@@ -2143,7 +2242,7 @@ const CITIES = (() => {
     const bl = s.bright ? `<i class="${ZW.brightLevel(s.bright) === 2 ? 'hi' : ''}">${s.bright}</i>` : '';
     const hua = s.hua ? `<em class="hua ${s.hua}" title="生年化${s.hua}">${s.hua}</em>` : '';
     const fh = (fl[s.name] || []).map((x) => `<em class="fhua ${x.hua}">${x.tag}${x.hua}</em>`).join('');
-    return `<span class="st ${s.type}" title="${s.name}${s.bright ? ' ' + s.bright : ''}${s.hua ? ' 化' + s.hua : ''}">${chars}${bl}${hua}${fh}</span>`;
+    return `<span class="st ${s.type}" data-star="${s.name}" role="button" tabindex="0" title="${s.name}${s.bright ? ' ' + s.bright : ''}${s.hua ? ' 化' + s.hua : ''}">${chars}${bl}${hua}${fh}</span>`;
   }
 
   function renderBoard(reveal) {
@@ -2242,11 +2341,14 @@ const CITIES = (() => {
         <button type="button" class="ghost-btn" data-act="edit">修改资料</button>
         <button type="button" class="ghost-btn" data-act="save">存为命例</button>
         <button type="button" class="ghost-btn" data-act="png">导出图片</button><button type="button" class="ghost-btn" data-act="json">导出数据</button>
+<button type="button" class="ghost-btn" data-act="share">分享命盘</button><button type="button" class="ghost-btn" data-act="copy">复制解读</button>
       </div>`;
     heart.querySelector('[data-act="edit"]').onclick = () => { S.editing = true; if (isMobile()) { $('#mobileFormSlot').hidden = false; $('#mobileFormSlot').scrollIntoView({ behavior: 'smooth' }); } renderHeart(); };
     heart.querySelector('[data-act="save"]').onclick = (e) => { saveRecent(true); e.target.textContent = '已存为命例'; };
     heart.querySelector('[data-act="png"]')?.addEventListener('click', exportPng);
     heart.querySelector('[data-act="json"]')?.addEventListener('click', exportJson);
+heart.querySelector('[data-act="share"]')?.addEventListener('click', shareChart);
+heart.querySelector('[data-act="copy"]')?.addEventListener('click', () => copyText(chartSummaryText(), '解读摘要已复制'));
   }
 
   /* ─────────── notices ─────────── */
@@ -2275,6 +2377,7 @@ const CITIES = (() => {
     nav.hidden = false;
     const sel = S.sel, h = S.horo;
     const selDx = h?.decade?.index;
+const curDx = ZW.daxianAtAge(c, S.nowAge);
     const dxChips = c.daxian.filter((d) => d.start <= 120).map((d) => `<button type="button" class="chip${S.nowAge >= d.start && S.nowAge <= d.end ? ' now' : ''}" aria-pressed="${selDx === d.index}" data-dx="${d.index}">${d.start}–${d.end}<small>${d.natalName} ${STEMS[d.stem]}${BRANCHES[d.branch]}</small></button>`).join('');
     let html = `<div class="tl-row"><span>大限</span><div class="chips"><button type="button" class="chip" aria-pressed="${!h}" data-natal>本命<small>原局</small></button>${dxChips}</div></div>`;
     if (h?.decade) {
@@ -2294,7 +2397,11 @@ const CITIES = (() => {
       for (let d = 1; d <= n; d++) ds.push(`<button type="button" class="chip" aria-pressed="${sel.day === d}" data-day="${d}">${DAY_CN(d)}</button>`);
       html += `<div class="tl-row"><span>流日</span><div class="chips">${ds.join('')}</div></div>`;
     }
-    nav.innerHTML = html;
+    const xiao = c.palaces.find((p) => p.xiaoxian && p.xiaoxian.includes(S.nowAge));
+const dj = h && h.month ? BRANCHES[h.month.douJun] : (S.nowHoro && S.nowHoro.month ? BRANCHES[S.nowHoro.month.douJun] : '');
+const head = `<div class="tl-head"><button type="button" class="tl-now" id="tlNow">回到今年</button>当前：大限 <b>${curDx ? `${curDx.start}–${curDx.end} 岁 · ${curDx.natalName}` : '—'}</b>　流年 <b>${todayLunar.year} 年（${S.nowHoro && S.nowHoro.year ? S.nowHoro.year.gz : ''}）</b>　小限在<b>${xiao ? xiao.name : '—'}</b>${dj ? `　流年斗君在<b>${dj}宫</b>` : ''}</div>`;
+nav.innerHTML = head + html;
+nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.index : undefined, year: todayLunar.year }); };
     nav.querySelector('[data-natal]').onclick = () => setSel({});
     nav.querySelectorAll('[data-dx]').forEach((b) => b.onclick = () => setSel({ decade: +b.dataset.dx }));
     nav.querySelectorAll('[data-year]').forEach((b) => b.onclick = () => setSel({ decade: selDx, year: +b.dataset.year }));
@@ -2319,7 +2426,7 @@ const CITIES = (() => {
   }
 
   /* ─────────── reading panel ─────────── */
-  const TABS = [['summary', '总论'], ['palace', '宫位'], ['pattern', '格局'], ['hua', '四化'], ['luck', '运限'], ['health', '体质'], ['ai', 'AI 解盘']];
+  const TABS = [['summary', '总论'], ['dims', '事业·感情'], ['palace', '宫位'], ['pattern', '格局'], ['hua', '四化'], ['luck', '运限'], ['health', '体质'], ['ai', 'AI 解盘']];
   function renderTabs() {
     const box = $('#tabs');
     if (!S.chart) { box.innerHTML = ''; return; }
@@ -2338,7 +2445,7 @@ const CITIES = (() => {
         <p class="disclaimer">排盘引擎为自研实现：历法由天文算法推得并与通行历表逐年核对，时辰按出生地真太阳时（经度时差加均时差）判定。命理解读仅供参考。</p>`;
       return;
     }
-    const fn = { summary: pSummary, palace: pPalace, pattern: pPattern, hua: pHua, luck: pLuck, health: pHealth, ai: pAi }[S.tab] || pSummary;
+    const fn = { summary: pSummary, dims: pDims, palace: pPalace, pattern: pPattern, hua: pHua, luck: pLuck, health: pHealth, ai: pAi }[S.tab] || pSummary;
     panel.innerHTML = fn(c);
     if (S.tab === 'ai') wireAi();
     panel.querySelectorAll('[data-goto]').forEach((a) => a.onclick = () => { S.tab = a.dataset.goto; renderTabs(); renderPanel(); });
@@ -2465,7 +2572,66 @@ const CITIES = (() => {
   }
   const AI_ERR = { bad_key: 'DeepSeek Key 无效（401），请检查后重新填写。', no_balance: 'DeepSeek 余额不足（402），请先在 DeepSeek 平台充值。', not_granted: '你没有允许此页面使用 Claude，AI 解盘已关闭。', sampling_disabled: '当前账号无法在此页面使用 Claude。', rate_limited: '请求太频繁或已达到用量上限，请稍后再试。', session_expired: '登录已过期，请重新登录 Claude 后再试。', refused: '这次请求没有得到回答，可以换个问法再试。', empty_completion: '没有生成内容，请再试一次。', upstream_error: '连接中断了，已保留生成的部分，可以重新生成。', prompt_too_large: '命盘内容过长，请缩短追问。' };
 
-  function pAi() {
+  function dimCard(title, sub, palaceName, extra) {
+const c = S.chart; const p = c.palaces.find((q) => q.name === palaceName);
+const d = Reading.palaceDetail(c, p.branch);
+const stars = p.stars.filter((x) => x.type !== 'minor').map((x) => x.name + (x.hua ? '化' + x.hua : '')).join('、') || '无主星';
+return `<div class="dim-card"><h3>${title}<small>${sub}</small></h3><p class="dim-stars"><b>${palaceName}</b>：${stars}</p><p>${d.read}</p>${extra || ''}<p><a href="javascript:void 0" data-pal="${p.branch}">看${palaceName}完整解读 →</a></p></div>`;
+}
+function pDims(c) {
+const h = Reading.health(c);
+const hua = Reading.huaCards(c).map((x) => `${x.star}化${x.hua}入${x.palace}`).join('、');
+return `<h2>事业 · 感情 · 财运 · 健康</h2><p class="muted">按宫位分开看：每张卡先讲本宫星曜，再讲对你具体意味着什么。点卡片底部可跳到该宫完整解读。</p>
+<div class="dim-grid">
+${dimCard('事业', '官禄宫', '官禄', `<p>生年四化：${hua || '无化星入关键宫位'}</p>`)}
+${dimCard('感情', '夫妻宫', '夫妻')}
+${dimCard('财运', '财帛宫', '财帛')}
+${dimCard('健康', '疾厄宫', '疾厄', `<p>${h.lines.map((x) => `${x.k}：${x.v}`).join('；')}</p>`)}
+</div>
+<p class="disclaimer">以上为规则版解读（不用填 Key 就能看完整版）。想看针对整张盘现写的深度解读，去「AI 解盘」页签：填一次 DeepSeek Key 生成 AI 版，不填也能点「规则版深度解读」看七节全文。解读仅供参考，不构成医疗、投资、法律建议。</p>`;
+}
+function openStar(name, branch) {
+const c = S.chart; if (!c) return;
+const st = Lore.STAR[name];
+const p = c.palaces[branch];
+const star = p.stars.find((x) => x.name === name);
+const inPal = Lore.IN_PALACE[p.name] ? Lore.IN_PALACE[p.name][name] : undefined;
+const body = $('#starBody'), title = $('#starTitle');
+title.textContent = `${name}${star && star.bright ? ' · ' + star.bright : ''}${star && star.hua ? ' · 化' + star.hua : ''}`;
+if (!st) { body.innerHTML = `<p>${esc(name)}：${esc(p.name)}的辅星/杂曜，见宫位解读。</p>`; }
+else {
+body.innerHTML = `<div class="star-key"><span>${st.wx}</span><span>${st.qi}</span><span>${st.key}</span></div>
+<h3>坐命 / 入宫</h3><p>${st.ming}</p>
+${inPal ? `<h3>在${p.name}</h3><p>${inPal}</p>` : ''}
+<h3>适合的方向</h3><p>${st.career}</p>
+<h3>身体上留意</h3><p>${st.organ}</p>
+<p class="muted">所在宫位：${p.name}（${STEMS[p.stem]}${BRANCHES[p.branch]}宫，大限 ${p.daxian[0]}–${p.daxian[1]} 岁）${star && star.hua ? ` · 生年化${star.hua}` : ''}</p>`;
+}
+$('#dlgStar').showModal();
+}
+function shareUrl() {
+const s = snapshot();
+const q = new URLSearchParams({ n: s.name || '', g: s.gender, c: s.calendar, y: s.year, m: s.month, d: s.day, t: s.timeMode === 'clock' ? s.time : ('b' + s.branch), p: s.place || '' });
+return `${location.origin}${location.pathname}#chart=${encodeURIComponent(q.toString())}`;
+}
+function toast(msg) { const t = $('#toast'); t.hidden = false; t.textContent = msg; t.className = 'toast'; clearTimeout(t._h); t._h = setTimeout(() => { t.hidden = true; }, 2200); }
+async function copyText(txt, okMsg) {
+try { await navigator.clipboard.writeText(txt); toast(okMsg); }
+catch (err) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast(okMsg); } catch (e2) { toast('复制失败，请长按手动复制'); } ta.remove(); }
+}
+async function shareChart() {
+const url = shareUrl();
+const m = S.chart ? Reading.mingSummary(S.chart) : null;
+const text = m ? `我的紫微命盘：${m.core.names.join('、') || '命无正曜'}坐命，${S.chart.juName}。在真一紫微免费排盘：${url}` : `真一紫微 · 免费紫微斗数排盘：${url}`;
+if (navigator.share) { try { await navigator.share({ title: '真一紫微 · 紫微斗数排盘', text, url }); return; } catch (err) { /* 用户取消则走复制 */ } }
+copyText(text, '链接已复制，发给朋友打开就是同一张盘');
+}
+function chartSummaryText() {
+const c = S.chart; if (!c) return '';
+const m = Reading.mingSummary(c);
+return `【真一紫微】${c.input.name || ''}${c.input.gender === 'male' ? '男' : '女'} ${c.juName}，命宫${m.core.names.join('、') || '无主星'}坐命；格局：${S.patterns.filter((p) => p.level !== 'neutral').slice(0, 3).map((p) => p.name).join('、') || '无明显格局'}；生年四化：${c.sihua.map((x) => x.star + x.hua).join('、')}。解读仅供参考。`;
+}
+function pAi() {
     const a = S.ai;
     const hasKey = !!dsKey();
     return `<h2>AI 深度解盘</h2>
@@ -2787,12 +2953,42 @@ const CITIES = (() => {
   }
 
   /* ─────────── boot ─────────── */
-  const last = store.get('saved', [])[0];
+  $('#btnZoom').addEventListener('click', (e) => { const col = document.querySelector('.board-col'); const on = col.classList.toggle('zoom'); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = on ? '恢复盘面' : '放大盘面'; });
+$('#btnLines').addEventListener('click', (e) => { S.showLines = !S.showLines; e.currentTarget.setAttribute('aria-pressed', String(S.showLines)); board.classList.toggle('no-lines', !S.showLines); renderLines(); });
+$('#btnShare').addEventListener('click', () => { if (!S.chart) { toast('先起一张盘再分享'); return; } shareChart(); });
+$('#btnCopyLink').addEventListener('click', () => { if (!S.chart) { toast('先起一张盘再复制链接'); return; } copyText(shareUrl(), '链接已复制'); });
+$$('.mobile-bar [data-bar]').forEach((b) => b.addEventListener('click', () => {
+const k = b.dataset.bar;
+if (k === 'form') { S.editing = true; placeForm(); $('#mobileFormSlot').scrollIntoView({ behavior: 'smooth' }); }
+else if (k === 'board') board.scrollIntoView({ behavior: 'smooth' });
+else if (k === 'reading') $('#reading').scrollIntoView({ behavior: 'smooth' });
+else if (k === 'ai') { S.tab = 'ai'; renderTabs(); renderPanel(); $('#reading').scrollIntoView({ behavior: 'smooth' }); }
+}));
+form.querySelector('#btnExample').addEventListener('click', () => {
+S.gender = 'male'; S.calendar = 'solar'; S.timeMode = 'clock';
+form.querySelectorAll('[data-gender]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.gender === 'male')));
+form.querySelectorAll('[data-cal]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.cal === 'solar')));
+fName.value = ''; fYear.value = 1990; fillMonths(); fMonth.value = 1; fillDays(); fDay.value = 1; fTime.value = '00:30'; fPlace.value = '';
+setTimeMode('clock'); compute(true);
+});
+function restoreFromHash() {
+try {
+const m = location.hash.match(/#chart=([^&]+)/); if (!m) return false;
+const q = new URLSearchParams(decodeURIComponent(m[1]));
+const s = { name: q.get('n') || '', gender: q.get('g') || 'male', calendar: q.get('c') || 'solar', year: +q.get('y'), month: +q.get('m'), day: +q.get('d'), leap: false, timeMode: 'clock', time: '12:00', branch: '6', place: q.get('p') || '', lon: null, tz: 8 };
+const t = q.get('t') || '';
+if (t.startsWith('b')) { s.timeMode = 'branch'; s.branch = t.slice(1); } else s.time = t;
+if (!s.year || !s.month || !s.day) return false;
+restore(s); return true;
+} catch (err) { return false; }
+}
+const fromHash = restoreFromHash();
+const last = fromHash ? null : store.get('saved', [])[0];
   if (last) restore(last.s);
   updateLonNote();
   placeForm();
   renderPanel();
-  if (last) compute(true);
+  if (fromHash || last) compute(true);
   initCaps();
 })();
 
