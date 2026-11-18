@@ -336,6 +336,19 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
 .mobile-bar { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--sheet); border-top: 1px solid var(--line); padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 8px; }
 .mobile-bar button { flex: 1; min-height: 44px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--sheet); font-size: 14px; color: var(--ink-2); }
 .mobile-bar button.primary { background: var(--zi); border-color: var(--zi); color: var(--sheet); font-weight: 700; }
+.mark { font-size: 9px; color: var(--gold); border: 1px solid var(--gold); border-radius: 3px; padding: 0 3px; margin-left: 3px; white-space: nowrap; }
+.plates { display: grid; gap: 10px; margin-top: 8px; }
+.plate-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--sheet-2); }
+.plate-card h4 { margin: 0 0 4px; color: var(--zi); font-size: 15px; }
+.plate-card p { margin: 0 0 4px; font-size: 13.5px; color: var(--ink-2); }
+.note-area { width: 100%; min-height: 90px; font: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--sheet); color: var(--ink); box-sizing: border-box; }
+.lib-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.lib-row select, .lib-row input { flex: 1 1 120px; }
+.cov { font-size: 13px; color: var(--ink-2); background: var(--sheet-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.syn-grid { display: grid; gap: 10px; }
+.star-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.star-chips button { border: 1px solid var(--line-2); background: var(--sheet); border-radius: 999px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+@media print { .top, .board-tools, .timeline, .mobile-bar, .hero, .notices, .heart-actions, .tabs { display: none !important; } .stage { display: block; } body { background: #fff; } }
 .toast { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); background: var(--ink); color: var(--sheet); font-size: 13.5px; padding: 8px 16px; border-radius: 999px; z-index: 40; box-shadow: var(--shadow); }
 .board-col.zoom .board { max-width: 1080px; grid-template-rows: repeat(4, minmax(168px, auto)); }
 .board-col.zoom .st.major { font-size: 18px; }
@@ -453,6 +466,7 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
       <label class="k" for="fTime">时间</label>
       <input class="field" type="time" id="fTime" value="12:00" required>
       <button type="button" class="link" id="toBranch">只知时辰</button>
+      <button type="button" class="link" id="unknownTime">不知道时间</button>
     </div>
     <div class="row" id="rowBranch" hidden>
       <label class="k" for="fBranch">时辰</label>
@@ -498,6 +512,21 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
       <select class="field" id="vGods"><option value="on">显示长生、博士十二神</option><option value="off">不显示</option></select>
       <label for="vFlowHua">运限四化</label>
       <select class="field" id="vFlowHua"><option value="off">不显示（倪师：四化固定）</option><option value="on">显示大限、流年四化作参考</option></select>
+    </div>
+    <p class="set-note">显示开关（对齐原站十项流派切换；截空未安星，本站只有旬空）：</p>
+    <div class="set">
+      <label for="sBright">亮度流派</label>
+      <select class="field" id="sBright"><option value="wenmo">现代修正 v2（默认）</option><option value="std">《斗数全书》通行表</option></select>
+      <label for="vMa">天马</label>
+      <select class="field" id="vMa"><option value="on">显示</option><option value="off">隐藏</option></select>
+      <label for="vKong">天空 / 旬空</label>
+      <select class="field" id="vKong"><option value="on">显示</option><option value="off">隐藏</option></select>
+      <label for="vKui">魁钺</label>
+      <select class="field" id="vKui"><option value="on">显示</option><option value="off">隐藏</option></select>
+      <label for="vTian">天使 / 天伤</label>
+      <select class="field" id="vTian"><option value="on">显示</option><option value="off">隐藏</option></select>
+      <label for="vHuaShow">四化标记</label>
+      <select class="field" id="vHuaShow"><option value="on">显示</option><option value="off">隐藏</option></select>
     </div>
   </div>
 </dialog>
@@ -901,7 +930,9 @@ const ZW = (() => {
     火星: '庙利陷得庙利陷得庙利陷得', 铃星: '庙利陷得庙利陷得庙利陷得',
     擎羊: '　陷庙　陷庙　陷庙　陷庙', 陀罗: '陷　庙陷　庙陷　庙陷　庙',
   };
+  let BRIGHT_SCHOOL = 'wenmo';
   function brightness(name, branch) {
+    if (BRIGHT_SCHOOL === 'std') { const st = B_STD[name]; if (!st) return ''; const cc = st[mod(branch - 2, 12)]; return cc === '　' ? '' : cc; }
     const w = B_WENMO[name]?.[branch];
     if (w) return w;
     const s = B_STD[name];
@@ -1242,6 +1273,13 @@ const ZW = (() => {
           } catch (e) { /* ignore */ }
           res.day = { scope: 'day', label: '流日', tag: '日', day: sel.day, branch: db, stem: dStem, gz: dgz, names: namesFrom(db), hua: huaOfStem(dStem) };
           res.layers.push(res.day);
+          if (sel.hour != null) {
+            const hb = mod(sel.hour, 12);
+            const hbBranch = mod(db + hb, 12);
+            const hStem = mod(dStem * 2 + hb, 10);
+            res.hour = { scope: 'hour', label: '流时', tag: '时', hour: hb, branch: hbBranch, stem: hStem, gz: STEMS[hStem] + BRANCHES[hb], names: namesFrom(hbBranch), hua: huaOfStem(hStem) };
+            res.layers.push(res.hour);
+          }
         }
       }
     }
@@ -1255,6 +1293,7 @@ const ZW = (() => {
 
   return {
     PALACES, SHORT, HOURS, HOUR_RANGE, MAJOR, LUCKY6, SHA6, CORE_MINOR, SIHUA, HUA,
+    setBrightSchool: (s) => { BRIGHT_SCHOOL = s === 'std' ? 'std' : 'wenmo'; },
     brightness, brightLevel, chinaDST, resolveTime, generate, horoscope, daxianAtAge, targetLunar, flowStars,
   };
 })();
@@ -1558,13 +1597,16 @@ const Reading = (() => {
     }
     {
       const fu = where(c, '天府'), xiang = where(c, '天相');
-      if (fu && xiang && ['财帛', '官禄'].includes(fu.name) && ['财帛', '官禄'].includes(xiang.name) && fu.branch !== xiang.branch) {
+      // 经典定义：天府、天相分守命宫三方四正（命、财、官、迁）朝拱命宫；
+      // 原站（Renhuai 引擎）对天府坐命、天相守官禄的盘也判此格，本站从窄口径（仅财官）改为经典三方口径，与原站一致。
+      const sfB = [c.ming, c.palaces.find((p) => p.name === '财帛').branch, c.palaces.find((p) => p.name === '官禄').branch, c.palaces.find((p) => p.name === '迁移').branch];
+      if (fu && xiang && sfB.includes(fu.branch) && sfB.includes(xiang.branch) && fu.branch !== xiang.branch) {
         const bonus = [], breaking = [];
         if (hasLu(ming)) bonus.push('命宫见禄');
         if (S.has('左辅') || S.has('右弼')) bonus.push('再会辅弼');
         if (hasAny(ming, SHA4)) breaking.push('命宫坐煞');
         if (shaCount(SF) >= 3) breaking.push('三方四正煞星过多');
-        push({ name: '府相朝垣', level: breaking.length ? 'good' : 'excellent', palaces: [fu.name, xiang.name], required: [`天府守${fu.name}、天相守${xiang.name}，两星朝拱命宫`], bonus, breaking, desc: '天府天相分守财官二宫而朝命，文武并济、权印双辉。古云「府相朝垣，千钟食禄」，主衣食丰足、地位稳固。', src: '《紫微斗数全书》' });
+        push({ name: '府相朝垣', level: breaking.length ? 'good' : 'excellent', palaces: [fu.name, xiang.name], required: [`天府守${fu.name}、天相守${xiang.name}，两星在命宫三方朝拱`], bonus, breaking, desc: '天府天相分守命、财、官而朝命，文武并济、权印双辉。古云「府相朝垣，千钟食禄」，主衣食丰足、地位稳固。', src: '《紫微斗数全书》' });
       }
     }
     if (S.has('太阳') && S.has('天梁') && S.has('文昌') && (S.has('禄存') || huaIn(SF, '禄'))) {
@@ -1974,6 +2016,149 @@ const Reading = (() => {
 })();
 
 
+
+/* ===== phrase.js ===== */
+/* ══════════════════════════════════════════════════════════════
+ * Phrase · 自建断语库（规则生成，非原站文本）
+ * 做法：按 宫位 × 星曜 × 亮度 × 四化 × 运限 五个维度组合生成，
+ * 文本全部由本系统用自己的话撰写（取自 Lore 断语与宫位/四化规则），
+ * 不收录、不复制、不编造原站 877 万段解读原文。
+ * 组合规模（主星断语）：12 宫 × 14 主星 × 3 亮度 × 5 化 × 5 层 = 12,600 种；
+ * 另有 12 宫位断语、4 化断语、格局断语与运限模板，按需生成。
+ * ══════════════════════════════════════════════════════════════ */
+const Phrase = (() => {
+  const DIMS13 = [
+    { key: 'overview', label: '命格总览', palace: '命宫' },
+    { key: 'personality', label: '性格', palace: '命宫' },
+    { key: 'love', label: '感情', palace: '夫妻' },
+    { key: 'career', label: '事业', palace: '官禄' },
+    { key: 'wealth', label: '财运', palace: '财帛' },
+    { key: 'health', label: '健康', palace: '疾厄' },
+    { key: 'family', label: '兄弟', palace: '兄弟' },
+    { key: 'children', label: '子女', palace: '子女' },
+    { key: 'move', label: '迁移', palace: '迁移' },
+    { key: 'friends', label: '人际', palace: '交友' },
+    { key: 'home', label: '田宅', palace: '田宅' },
+    { key: 'spirit', label: '福德', palace: '福德' },
+    { key: 'parents', label: '父母', palace: '父母' },
+  ];
+  const LAYERS = ['本命', '大限', '流年', '流月', '流日'];
+  const BRIGHTS = ['庙旺', '平', '落陷'];
+  const HUAS = ['无化', '禄', '权', '科', '忌'];
+  const coverageTotal = () => 12 * 14 * 3 * 5 * 5; // 12,600 种主星断语组合
+  const MAJORS14 = ['紫微', '天机', '太阳', '武曲', '天同', '廉贞', '天府', '太阴', '贪狼', '巨门', '天相', '天梁', '七杀', '破军'];
+
+  function layerBranch(layer, palaceName) {
+    if (!layer) return null;
+    const i = layer.names.findIndex((n) => n === palaceName);
+    return i >= 0 ? i : null;
+  }
+  function brightWord(b) {
+    const l = ZW.brightLevel(b);
+    return l === 2 ? '庙旺' : l === 0 ? '落陷' : '平';
+  }
+
+  /** 某维度在某运限下的断语（本命 layer=null；否则为 horoscope 的某一层） */
+  function phraseFor(c, dimKey, layer) {
+    const dim = DIMS13.find((d) => d.key === dimKey) || DIMS13[0];
+    const natal = c.palaces.find((p) => p.name === dim.palace);
+    let branch = natal.branch, role = '本命';
+    if (layer) {
+      const lb = layerBranch(layer, dim.palace);
+      if (lb != null) { branch = lb; role = layer.label; }
+    }
+    const p = c.palaces[branch];
+    const d = Reading.palaceDetail(c, branch);
+    const tn = Reading.tone(c, branch);
+    const lines = [];
+    if (dimKey === 'overview') {
+      const m = Reading.mingSummary(c);
+      lines.push(m.text, m.shen);
+      if (layer) lines.push(`${role}${layer.gz ? `（${layer.gz}）` : ''}走到${p.name}：${(Lore.DECADE_FOCUS[p.name] || Lore.YEAR_FOCUS[p.name] || '')}`);
+    } else if (dimKey === 'health') {
+      const r = Reading.health(c);
+      lines.push(...r.lines.map((x) => `${x.k}：${x.v}`));
+    } else {
+      lines.push(d.read, ...d.lines.slice(0, 2));
+      if (layer) {
+        const focus = role === '大限' ? Lore.DECADE_FOCUS[p.name] : Lore.YEAR_FOCUS[p.name];
+        if (focus) lines.push(`${role}：${focus.replace('今年', role === '流月' ? '本月' : role === '流日' ? '今日' : '这段时期')}`);
+      }
+    }
+    d.hua.forEach((h) => lines.push(`${h.star}化${h.hua}：${h.text}`));
+    const stars = p.stars.filter((x) => x.type !== 'minor').map((x) => x.name + (x.bright ? `(${x.bright})` : '') + (x.hua ? `化${x.hua}` : '')).join('、') || '无主星';
+    return { dim, palaceName: p.name, branch, stars, role, lead: `${dim.label}看${dim.palace}${layer ? `（${role}）` : ''}：${d.read}`, lines, tone: tn };
+  }
+
+  /** 任意组合的断语（断语库浏览器用）：宫位 × 星曜 × 亮度 × 四化 × 运限 */
+  function libraryPhrase(palaceName, starName, bright, hua, layerLabel) {
+    const st = Lore.STAR[starName];
+    const parts = [];
+    const huaTxt = hua && hua !== '无化' ? Lore.HUA_TEXT[hua][palaceName] : '';
+    if (!st) return { title: `${starName}在${palaceName}`, text: `${starName}为辅星/杂曜，见${palaceName}的宫位解读。`, basis: '宫位解读' };
+    parts.push(`${starName}（${st.wx}，${st.key}）在${palaceName}，亮度${bright}：${st.ming}`);
+    const inPal = Lore.IN_PALACE[palaceName]?.[starName];
+    if (inPal) parts.push(`在${palaceName}：${inPal}`);
+    if (huaTxt) parts.push(`化${hua}：${huaTxt}`);
+    if (bright === '落陷') parts.push('落陷时力量打折，须看三方四正的吉煞与四化来扶。');
+    if (bright === '庙旺') parts.push('庙旺时力量足，是此宫的有利组合。');
+    if (layerLabel && layerLabel !== '本命') parts.push(`${layerLabel}走到${palaceName}时，这段话就是这段时期的主题。`);
+    return { title: `${starName}（${bright}）在${palaceName}${hua && hua !== '无化' ? `化${hua}` : ''} · ${layerLabel}`, text: parts.join(''), basis: '星曜断语 + 宫位断语 + 四化断语（本系统撰写）' };
+  }
+
+  /** 天地人三盘：天盘本命 / 地盘当前大限 / 人盘当前流年 */
+  function threePlates(c, horo) {
+    const out = [];
+    const ming = c.palaces[c.ming];
+    const majors = (p) => p.stars.filter((x) => x.type === 'major').map((x) => x.name).join('、') || '无主星';
+    out.push({ title: '天盘 · 本命', line: `命宫在${ming.name}（${ming.stem ? '' : ''}${c.palaces[c.ming].name}），坐${majors(ming)}。`, detail: '天盘看先天：个性、格局与一生基调。' });
+    if (horo?.decade) {
+      const p = c.palaces[horo.decade.branch];
+      out.push({ title: `地盘 · 大限 ${horo.decade.start}–${horo.decade.end} 岁`, line: `大限命宫在本命${p.name}，坐${majors(p)}。${Lore.DECADE_FOCUS[p.name] || ''}`, detail: '地盘看十年环境：这十年的人生主轴。' });
+    } else out.push({ title: '地盘 · 大限', line: '在命盘下方选一个大限，这里会显示该十年的地盘。', detail: '' });
+    if (horo?.year) {
+      const p = c.palaces[horo.year.branch];
+      out.push({ title: `人盘 · 流年 ${horo.year.year} 年`, line: `流年命宫在本命${p.name}，坐${majors(p)}。${Lore.YEAR_FOCUS[p.name] || ''}`, detail: '人盘看一年事项：今年的具体走向。' });
+    } else out.push({ title: '人盘 · 流年', line: '在命盘下方选一个流年，这里会显示该年的人盘。', detail: '' });
+    return out;
+  }
+
+  /** 小六壬：月上起日，日上起时。六神：大安 留连 速喜 赤口 小吉 空亡 */
+  function xiaoLiuRen(month, day, hourBranch) {
+    const GODS = ['大安', '留连', '速喜', '赤口', '小吉', '空亡'];
+    const MEAN = {
+      大安: '事事安稳、宜静不宜动，求财、出行、谋事多顺，宜守成。',
+      留连: '事情拖延、反复，宜缓不宜急，防小人暗中阻挠。',
+      速喜: '喜事速至、宜速不宜迟，求财、见面、报喜多吉。',
+      赤口: '口舌是非、宜防官讼争执，谋事多阻，宜低调。',
+      小吉: '小有收获、宜合作与小事，见贵人，宜进不宜大动。',
+      空亡: '事多落空、宜守不宜进，求谋多不成，宜等待时机。',
+    };
+    const idx = (month - 1 + day - 1 + hourBranch) % 6;
+    return { god: GODS[idx], text: MEAN[GODS[idx]], steps: `正月起大安：月数 ${month} → 日数 ${day} → 时辰 ${['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][hourBranch]}，数到「${GODS[idx]}」。` };
+  }
+
+  /** 合盘：两张本命盘的规则对比（本系统撰写，不调用 AI） */
+  function synastry(c1, c2) {
+    const lines = [];
+    const m1 = Reading.mingSummary(c1), m2 = Reading.mingSummary(c2);
+    lines.push(`两人命宫：一方 ${m1.core.names.join('、') || '无主星'}坐命，另一方 ${m2.core.names.join('、') || '无主星'}坐命。`);
+    const w1 = c1.palaces.find((p) => p.name === '夫妻'), w2 = c2.palaces.find((p) => p.name === '夫妻');
+    const stars = (p) => p.stars.filter((x) => x.type !== 'minor').map((x) => x.name).join('、') || '无主星';
+    lines.push(`夫妻宫：一方夫妻宫坐${stars(w1)}，另一方夫妻宫坐${stars(w2)}——看对方在感情里的样子，先看各自夫妻宫的主星。`);
+    const ji1 = c1.sihua.find((x) => x.hua === '忌'), ji2 = c2.sihua.find((x) => x.hua === '忌');
+    if (ji1) lines.push(`一方生年${ji1.star}化忌在${c1.palaces[ji1.branch].name}，感情里最执着、最容易较真的就是这件事。`);
+    if (ji2) lines.push(`另一方生年${ji2.star}化忌在${c2.palaces[ji2.branch].name}，同样是对方感情里的功课。`);
+    const lu1 = c1.sihua.find((x) => x.hua === '禄'), lu2 = c2.sihua.find((x) => x.hua === '禄');
+    if (lu1) lines.push(`一方生年${lu1.star}化禄在${c1.palaces[lu1.branch].name}，相处中这方面最容易得到、也最愿意付出。`);
+    if (lu2) lines.push(`另一方生年${lu2.star}化禄在${c2.palaces[lu2.branch].name}，是对方愿意给你的部分。`);
+    lines.push('合盘只看本命：两张盘的夫妻宫与生年四化对照，讲的是两人关系的底色；具体哪一年顺、哪一年要磨合，看各自的大限与流年。');
+    return lines;
+  }
+
+  return { DIMS13, LAYERS, BRIGHTS, HUAS, MAJORS14, coverageTotal, phraseFor, libraryPhrase, threePlates, xiaoLiuRen, synastry };
+})();
+
 /* ===== cities.js ===== */
 /* 出生地经度表（度，东经为正）；tz 为标准时区。用于真太阳时校正 */
 const CITIES = (() => {
@@ -2042,13 +2227,14 @@ const CITIES = (() => {
   const POS = { 5: [25, 25], 6: [37.5, 25], 7: [62.5, 25], 8: [75, 25], 9: [75, 37.5], 10: [75, 62.5], 11: [75, 75], 0: [62.5, 75], 1: [37.5, 75], 2: [25, 75], 3: [25, 62.5], 4: [25, 37.5] };
   const TZ_LIST = [-8, -7, -6, -5, -4, -3, 0, 1, 2, 3, 4, 5, 5.5, 6, 7, 8, 9, 9.5, 10, 12];
 
-  const defaults = { dst: 'auto', trueSolar: 'full', zi: 'next', leap: 'split', yearDivide: 'lunar', minor: 'core', gods: 'on', flowHua: 'off' };
+  const defaults = { dst: 'auto', trueSolar: 'full', zi: 'next', leap: 'split', yearDivide: 'lunar', minor: 'core', gods: 'on', flowHua: 'off', bright: 'wenmo', disp: { ma: true, kong: true, kuiyue: true, tianshi: true, hua: true } };
   const S = {
     gender: 'male', calendar: 'solar', timeMode: 'clock', lon: null, tz: 8, city: null,
     settings: { ...defaults, ...store.get('settings', {}) },
     chart: null, patterns: [], horo: null, sel: {}, selPalace: null, tab: 'summary', editing: false, showLines: true,
-    sample: null, downloads: null, ai: { running: false, ctl: null, text: '', turns: [], qa: [] },
+    sample: null, downloads: null, syn: null, ai: { running: false, ctl: null, text: '', turns: [], qa: [] },
   };
+  S.settings.disp = { ma: true, kong: true, kuiyue: true, tianshi: true, hua: true, ...(S.settings.disp || {}) };
   const today = new Date();
   const todayLunar = Cal.solarToLunar(today.getFullYear(), today.getMonth() + 1, today.getDate());
 
@@ -2169,13 +2355,14 @@ const CITIES = (() => {
   const dlgSet = $('#dlgSettings'), dlgSaved = $('#dlgSaved');
   TZ_LIST.forEach((t) => $('#sTz').add(new Option(`UTC${t >= 0 ? '+' : ''}${t}${t === 8 ? '（北京时间）' : ''}`, String(t))));
   $('#sTz').value = '8';
-  const setMap = { sDst: 'dst', sTrue: 'trueSolar', sZi: 'zi', sLeap: 'leap', sYear: 'yearDivide', vMinor: 'minor', vGods: 'gods', vFlowHua: 'flowHua' };
+  const setMap = { sDst: 'dst', sTrue: 'trueSolar', sZi: 'zi', sLeap: 'leap', sYear: 'yearDivide', vMinor: 'minor', vGods: 'gods', vFlowHua: 'flowHua', sBright: 'bright' };
   for (const [id, key] of Object.entries(setMap)) {
     const el = $('#' + id);
     el.value = S.settings[key];
     el.addEventListener('change', () => {
       S.settings[key] = el.value; store.set('settings', S.settings);
-      if (['minor', 'gods', 'flowHua'].includes(key)) { renderBoard(false); renderPanel(); } else if (S.chart) compute(false);
+      if (key === 'bright') { ZW.setBrightSchool(el.value); if (S.chart) compute(false); }
+      else if (['minor', 'gods', 'flowHua'].includes(key)) { renderBoard(false); renderPanel(); } else if (S.chart) compute(false);
     });
   }
   $('#sLon').addEventListener('change', () => {
@@ -2185,6 +2372,12 @@ const CITIES = (() => {
     updateLonNote(); if (S.chart) compute(false);
   });
   $('#sTz').addEventListener('change', () => { S.tz = parseFloat($('#sTz').value); updateLonNote(); if (S.chart) compute(false); });
+  const dispMap = { vMa: 'ma', vKong: 'kong', vKui: 'kuiyue', vTian: 'tianshi', vHuaShow: 'hua' };
+  for (const [id, key] of Object.entries(dispMap)) {
+    const el = $('#' + id);
+    el.value = S.settings.disp[key] === false ? 'off' : 'on';
+    el.addEventListener('change', () => { S.settings.disp[key] = el.value !== 'off'; store.set('settings', S.settings); renderBoard(false); renderPanel(); });
+  }
   $('#btnSettings').addEventListener('click', () => dlgSet.showModal());
   $('#btnSaved').addEventListener('click', () => { renderSaved(); dlgSaved.showModal(); });
   $$('dialog [data-close]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
@@ -2240,7 +2433,7 @@ const CITIES = (() => {
   function starHtml(s, fl) {
     const chars = [...s.name].map((ch) => `<b>${ch}</b>`).join('');
     const bl = s.bright ? `<i class="${ZW.brightLevel(s.bright) === 2 ? 'hi' : ''}">${s.bright}</i>` : '';
-    const hua = s.hua ? `<em class="hua ${s.hua}" title="生年化${s.hua}">${s.hua}</em>` : '';
+    const hua = (s.hua && S.settings.disp?.hua !== false) ? `<em class="hua ${s.hua}" title="生年化${s.hua}">${s.hua}</em>` : '';
     const fh = (fl[s.name] || []).map((x) => `<em class="fhua ${x.hua}">${x.tag}${x.hua}</em>`).join('');
     return `<span class="st ${s.type}" data-star="${s.name}" role="button" tabindex="0" title="${s.name}${s.bright ? ' ' + s.bright : ''}${s.hua ? ' 化' + s.hua : ''}">${chars}${bl}${hua}${fh}</span>`;
   }
@@ -2251,6 +2444,8 @@ const CITIES = (() => {
     if (!c) return;
     const st = S.settings, h = S.horo;
     const curDx = ZW.daxianAtAge(c, S.nowAge);
+    const xiaoB = S.nowHoro?.year?.xiaoxian ?? null;
+    const djB = c ? mod(mod(todayLunar.year - 4, 12) + c.douJunOffset, 12) : null;
     for (let b = 0; b < 12; b++) {
       const p = c.palaces[b];
       const el = palEls[b];
@@ -2259,10 +2454,12 @@ const CITIES = (() => {
       // 运限四化（可选）
       const fl = {};
       if (h && st.flowHua === 'on') for (const L of h.layers) for (const x of L.hua) (fl[x.star] ||= []).push({ tag: L.tag, hua: x.hua });
-      const cols = p.stars.filter((s) => s.type !== 'minor').map((s) => starHtml(s, fl)).join('');
+      const disp = S.settings.disp || {};
+      const vis = (n) => !((n === '天马' && disp.ma === false) || ((n === '天空' || n === '旬空') && disp.kong === false) || ((n === '天魁' || n === '天钺') && disp.kuiyue === false) || ((n === '天使' || n === '天伤') && disp.tianshi === false));
+      const cols = p.stars.filter((s) => s.type !== 'minor' && vis(s.name)).map((s) => starHtml(s, fl)).join('');
       let minors = [];
-      if (st.minor === 'core') minors = p.stars.filter((s) => ZW.CORE_MINOR.includes(s.name));
-      else if (st.minor === 'all') minors = p.stars.filter((s) => s.type === 'minor');
+      if (st.minor === 'core') minors = p.stars.filter((s) => ZW.CORE_MINOR.includes(s.name) && vis(s.name));
+      else if (st.minor === 'all') minors = p.stars.filter((s) => s.type === 'minor' && vis(s.name));
       const minorHtml = minors.length ? `<div class="minors">${minors.map((s) => `<span>${s.name}${fl[s.name] ? fl[s.name].map((x) => x.tag + x.hua).join('') : ''}</span>`).join('')}</div>` : '<div class="minors"></div>';
       let tags = '', flows = '';
       if (h) {
@@ -2277,7 +2474,7 @@ const CITIES = (() => {
       el.querySelector('.body').innerHTML = `
         <div class="stars">${cols || (p.isEmpty && p.borrow.stars.length ? `<span class="st minor" title="空宫借对宫"><b>借</b>${p.borrow.stars.map((n) => `<b>${n[0]}</b>`).join('')}</span>` : '')}</div>
         ${minorHtml}${flows}${tags ? `<div class="tags">${tags}</div>` : ''}${extra}
-        <div class="foot"><span class="dx${isNowDx ? ' now' : ''}">${p.daxian[0]}–${p.daxian[1]}</span><span class="pname">${p.name}${p.isShen ? '<span class="shen" title="身宫">身</span>' : ''}</span><span class="gz">${STEMS[p.stem]}${BRANCHES[p.branch]}</span></div>`;
+        <div class="foot"><span class="dx${isNowDx ? ' now' : ''}">${p.daxian[0]}–${p.daxian[1]}</span><span class="pname">${p.name}${p.isShen ? '<span class="shen" title="身宫">身</span>' : ''}</span><span class="gz">${STEMS[p.stem]}${BRANCHES[p.branch]}</span>${b === xiaoB ? '<span class="mark" title="小限在此宫">小限</span>' : ''}${b === djB ? '<span class="mark" title="流年斗君在此宫">斗君</span>' : ''}</div>`;
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0');
       el.setAttribute('aria-label', `${p.name}，${STEMS[p.stem]}${BRANCHES[p.branch]}宫，${p.stars.filter((s) => s.type !== 'minor').map((s) => s.name + (s.hua ? '化' + s.hua : '')).join('、') || '无主星'}`);
@@ -2341,7 +2538,7 @@ const CITIES = (() => {
         <button type="button" class="ghost-btn" data-act="edit">修改资料</button>
         <button type="button" class="ghost-btn" data-act="save">存为命例</button>
         <button type="button" class="ghost-btn" data-act="png">导出图片</button><button type="button" class="ghost-btn" data-act="json">导出数据</button>
-<button type="button" class="ghost-btn" data-act="share">分享命盘</button><button type="button" class="ghost-btn" data-act="copy">复制解读</button>
+<button type="button" class="ghost-btn" data-act="share">分享命盘</button><button type="button" class="ghost-btn" data-act="copy">复制解读</button><button type="button" class="ghost-btn" data-act="report">导出报告（打印/PDF）</button><button type="button" class="ghost-btn" data-act="fullcopy">复制完整报告</button>
       </div>`;
     heart.querySelector('[data-act="edit"]').onclick = () => { S.editing = true; if (isMobile()) { $('#mobileFormSlot').hidden = false; $('#mobileFormSlot').scrollIntoView({ behavior: 'smooth' }); } renderHeart(); };
     heart.querySelector('[data-act="save"]').onclick = (e) => { saveRecent(true); e.target.textContent = '已存为命例'; };
@@ -2349,6 +2546,8 @@ const CITIES = (() => {
     heart.querySelector('[data-act="json"]')?.addEventListener('click', exportJson);
 heart.querySelector('[data-act="share"]')?.addEventListener('click', shareChart);
 heart.querySelector('[data-act="copy"]')?.addEventListener('click', () => copyText(chartSummaryText(), '解读摘要已复制'));
+    heart.querySelector('[data-act="report"]')?.addEventListener('click', () => window.print());
+    heart.querySelector('[data-act="fullcopy"]')?.addEventListener('click', () => copyText(fullReportText(), '完整报告已复制'));
   }
 
   /* ─────────── notices ─────────── */
@@ -2397,6 +2596,11 @@ const curDx = ZW.daxianAtAge(c, S.nowAge);
       for (let d = 1; d <= n; d++) ds.push(`<button type="button" class="chip" aria-pressed="${sel.day === d}" data-day="${d}">${DAY_CN(d)}</button>`);
       html += `<div class="tl-row"><span>流日</span><div class="chips">${ds.join('')}</div></div>`;
     }
+    if (sel.day != null) {
+      const hs = [];
+      for (let hh = 0; hh < 12; hh++) hs.push(`<button type="button" class="chip" aria-pressed="${sel.hour === hh}" data-hour="${hh}">${ZW.HOURS[hh]}时<small>${BRANCHES[hh]}</small></button>`);
+      html += `<div class="tl-row"><span>流时</span><div class="chips">${hs.join('')}</div></div>`;
+    }
     const xiao = c.palaces.find((p) => p.xiaoxian && p.xiaoxian.includes(S.nowAge));
 const dj = h && h.month ? BRANCHES[h.month.douJun] : (S.nowHoro && S.nowHoro.month ? BRANCHES[S.nowHoro.month.douJun] : '');
 const head = `<div class="tl-head"><button type="button" class="tl-now" id="tlNow">回到今年</button>当前：大限 <b>${curDx ? `${curDx.start}–${curDx.end} 岁 · ${curDx.natalName}` : '—'}</b>　流年 <b>${todayLunar.year} 年（${S.nowHoro && S.nowHoro.year ? S.nowHoro.year.gz : ''}）</b>　小限在<b>${xiao ? xiao.name : '—'}</b>${dj ? `　流年斗君在<b>${dj}宫</b>` : ''}</div>`;
@@ -2406,7 +2610,8 @@ nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.ind
     nav.querySelectorAll('[data-dx]').forEach((b) => b.onclick = () => setSel({ decade: +b.dataset.dx }));
     nav.querySelectorAll('[data-year]').forEach((b) => b.onclick = () => setSel({ decade: selDx, year: +b.dataset.year }));
     nav.querySelectorAll('[data-month]').forEach((b) => b.onclick = () => setSel({ ...S.sel, month: +b.dataset.month, day: undefined }));
-    nav.querySelectorAll('[data-day]').forEach((b) => b.onclick = () => setSel({ ...S.sel, day: +b.dataset.day }));
+    nav.querySelectorAll('[data-day]').forEach((b) => b.onclick = () => setSel({ ...S.sel, day: +b.dataset.day, hour: undefined }));
+    nav.querySelectorAll('[data-hour]').forEach((b) => b.onclick = () => setSel({ ...S.sel, hour: +b.dataset.hour }));
     // 只横向滚动芯片条，不牵动页面
     nav.querySelectorAll('.chips').forEach((row) => {
       const on = row.querySelector('[aria-pressed="true"]') || row.querySelector('.now');
@@ -2426,7 +2631,7 @@ nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.ind
   }
 
   /* ─────────── reading panel ─────────── */
-  const TABS = [['summary', '总论'], ['dims', '事业·感情'], ['palace', '宫位'], ['pattern', '格局'], ['hua', '四化'], ['luck', '运限'], ['health', '体质'], ['ai', 'AI 解盘']];
+  const TABS = [['summary', '总论'], ['dims', '十三维'], ['palace', '宫位'], ['pattern', '格局'], ['hua', '四化'], ['luck', '运限'], ['health', '体质'], ['syn', '合盘'], ['liuren', '小六壬'], ['lore', '学盘·断语库'], ['ai', 'AI 解盘']];
   function renderTabs() {
     const box = $('#tabs');
     if (!S.chart) { box.innerHTML = ''; return; }
@@ -2445,9 +2650,12 @@ nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.ind
         <p class="disclaimer">排盘引擎为自研实现：历法由天文算法推得并与通行历表逐年核对，时辰按出生地真太阳时（经度时差加均时差）判定。命理解读仅供参考。</p>`;
       return;
     }
-    const fn = { summary: pSummary, dims: pDims, palace: pPalace, pattern: pPattern, hua: pHua, luck: pLuck, health: pHealth, ai: pAi }[S.tab] || pSummary;
+    const fn = { summary: pSummary, dims: pDims, palace: pPalace, pattern: pPattern, hua: pHua, luck: pLuck, health: pHealth, syn: pSyn, liuren: pLiuren, lore: pLore, ai: pAi }[S.tab] || pSummary;
     panel.innerHTML = fn(c);
     if (S.tab === 'ai') wireAi();
+    if (S.tab === 'syn') wireSyn();
+    if (S.tab === 'liuren') wireLiuren();
+    if (S.tab === 'lore') wireLore();
     panel.querySelectorAll('[data-goto]').forEach((a) => a.onclick = () => { S.tab = a.dataset.goto; renderTabs(); renderPanel(); });
     panel.querySelectorAll('[data-pal]').forEach((a) => a.onclick = () => selectPalace(+a.dataset.pal));
   }
@@ -2523,6 +2731,9 @@ nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.ind
     if (yr) html += `<h3>${yr.title}<span class="tone ${yr.tone.level}">${yr.tone.level}</span></h3><ul class="lines-list">${yr.lines.map((l) => `<li>${l}</li>`).join('')}</ul>`;
     if (h?.month) html += `<h3>流月 ${MONTH_CN[h.month.month - 1]}月（${h.month.gz}）</h3><p>流年斗君在${BRANCHES[h.month.douJun]}宫。流月命宫落本命${c.palaces[h.month.branch].name}：${Lore.YEAR_FOCUS[c.palaces[h.month.branch].name].replace('今年', '本月')}</p>`;
     if (h?.day) html += `<h3>流日 ${DAY_CN(h.day.day)}${h.day.gz ? `（${h.day.gz}日${h.daySolar ? `，公历 ${h.daySolar.m}月${h.daySolar.d}日` : ''}）` : ''}</h3><p>流日命宫落本命${c.palaces[h.day.branch].name}。</p>`;
+    if (h?.hour) html += `<h3>流时 ${ZW.HOURS[h.hour.hour]}时（${h.hour.gz}）</h3><p>流时命宫落本命${c.palaces[h.hour.branch].name}：${Lore.YEAR_FOCUS[c.palaces[h.hour.branch].name].replace('今年', '此时')}</p>`;
+    const plates = Phrase.threePlates(c, h);
+    html += `<h3>天地人三盘</h3><div class="plates">${plates.map((x) => `<div class="plate-card"><h4>${x.title}</h4><p>${x.line}</p><p class="muted">${x.detail}</p></div>`).join('')}</div>`;
     if (S.settings.flowHua === 'on' && h) {
       html += '<h3>运限四化（参考）</h3><p class="muted">倪师体系不以运限天干四化论断，此处仅供对照。</p>';
       for (const L of h.layers) html += `<p><b>${L.label}${L.gz}</b>：${L.hua.map((x) => { const p = c.palaces.find((q) => q.stars.some((s) => s.name === x.star)); return `${x.star}化${x.hua}入${p ? p.name : '—'}`; }).join('，')}</p>`;
@@ -2579,16 +2790,110 @@ const stars = p.stars.filter((x) => x.type !== 'minor').map((x) => x.name + (x.h
 return `<div class="dim-card"><h3>${title}<small>${sub}</small></h3><p class="dim-stars"><b>${palaceName}</b>：${stars}</p><p>${d.read}</p>${extra || ''}<p><a href="javascript:void 0" data-pal="${p.branch}">看${palaceName}完整解读 →</a></p></div>`;
 }
 function pDims(c) {
-const h = Reading.health(c);
-const hua = Reading.huaCards(c).map((x) => `${x.star}化${x.hua}入${x.palace}`).join('、');
-return `<h2>事业 · 感情 · 财运 · 健康</h2><p class="muted">按宫位分开看：每张卡先讲本宫星曜，再讲对你具体意味着什么。点卡片底部可跳到该宫完整解读。</p>
-<div class="dim-grid">
-${dimCard('事业', '官禄宫', '官禄', `<p>生年四化：${hua || '无化星入关键宫位'}</p>`)}
-${dimCard('感情', '夫妻宫', '夫妻')}
-${dimCard('财运', '财帛宫', '财帛')}
-${dimCard('健康', '疾厄宫', '疾厄', `<p>${h.lines.map((x) => `${x.k}：${x.v}`).join('；')}</p>`)}
-</div>
-<p class="disclaimer">以上为规则版解读（不用填 Key 就能看完整版）。想看针对整张盘现写的深度解读，去「AI 解盘」页签：填一次 DeepSeek Key 生成 AI 版，不填也能点「规则版深度解读」看七节全文。解读仅供参考，不构成医疗、投资、法律建议。</p>`;
+  const layer = S.horo?.layers?.at(-1) || null;
+  const layerNote = layer ? `<p class="muted">当前看${layer.label}（${layer.gz}）：下面每维按该运限走到本命哪一宫来读。点命盘下方“本命”回到原局。</p>` : '';
+  const cards = Phrase.DIMS13.map((d) => {
+    const ph = Phrase.phraseFor(c, d.key, layer);
+    return `<div class="dim-card"><h3>${d.label}<small>${ph.palaceName} · ${ph.stars}</small></h3><p>${ph.lead}</p><p>${ph.lines.slice(0, 2).join('')}</p><p><a href="javascript:void 0" data-pal="${ph.branch}">看${ph.palaceName}完整解读 →</a></p></div>`;
+  }).join('');
+  return `<h2>十三维解读</h2><p class="muted">原站的 13 个维度都在这里：命格总览、性格、感情、事业、财运、健康、兄弟、子女、迁移、人际、田宅、福德、父母。选了大限或流年后，每维会切换成该运限的读法。</p>${layerNote}<div class="dim-grid">${cards}</div><p class="disclaimer">以上为规则版解读，由本系统按宫位、星曜、亮度、四化与运限现写，仅供参考。想看针对整张盘现写的深度解读，去「AI 解盘」页签。</p>`;
+}
+function pSyn(c) {
+  const s2 = S.syn;
+  const res = s2 ? (() => {
+    const lines = Phrase.synastry(c, s2.chart);
+    const m2 = Reading.mingSummary(s2.chart);
+    return `<h3>合盘结果</h3><p class="muted">对方：${s2.input.name || (s2.input.gender === 'male' ? '乾造' : '坤造')} ${s2.input.year}-${s2.input.month}-${s2.input.day} ${ZW.HOURS[s2.chart.hour]}时，命宫${m2.core.names.join('、') || '无主星'}坐命。</p><ul class="lines-list">${lines.map((l) => `<li>${l}</li>`).join('')}</ul><p class="disclaimer">合盘为规则对比（本命对照），未调用 AI，仅供参考。</p>`;
+  })() : '';
+  return `<h2>合盘</h2><p class="muted">输入对方的出生资料，起第二张盘对照：两人的命宫、夫妻宫与生年四化。合盘只看本命，不含流年推运。</p>
+  <div class="syn-grid">
+    <div class="row"><label class="k" for="synName">对方</label><input class="field" id="synName" placeholder="可不填" maxlength="16"></div>
+    <div class="row"><span class="k">性别</span><div class="seg" role="group"><button type="button" data-syngender="male" aria-pressed="true">男</button><button type="button" data-syngender="female" aria-pressed="false">女</button></div></div>
+    <div class="row"><label class="k">日期</label><div class="trio"><select class="field" id="synYear"></select><select class="field" id="synMonth"></select><select class="field" id="synDay"></select></div></div>
+    <div class="row"><label class="k" for="synTime">时间</label><input class="field" type="time" id="synTime" value="12:00"></div>
+    <button class="btn" id="synGo" type="button">起对方的盘并合盘</button>
+  </div>
+  <div id="synOut">${res}</div>`;
+}
+function pLiuren(c) {
+  const lm = todayLunar.month, ld = todayLunar.day;
+  const nowH = Math.floor(((new Date().getHours() + 1) % 24) / 2);
+  return `<h2>小六壬</h2><p class="muted">心中想一件事，以此刻的农历月、日、时辰起课：月上起日，日上起时，在指节上数出答案。本系统只给课象与参考，不替你做决定。</p>
+  <div class="lib-row">
+    <label>农历月 <input class="field" id="lrMonth" type="number" min="1" max="12" value="${lm}"></label>
+    <label>农历日 <input class="field" id="lrDay" type="number" min="1" max="30" value="${ld}"></label>
+    <label>时辰 <select class="field" id="lrHour">${[0,1,2,3,4,5,6,7,8,9,10,11].map((i) => `<option value="${i}"${i === nowH ? ' selected' : ''}>${ZW.HOURS[i]}时</option>`).join('')}</select></label>
+  </div>
+  <button class="btn" id="lrGo" type="button">以此刻起课</button>
+  <div id="lrOut"></div>`;
+}
+function pLore(c) {
+  const total = Phrase.coverageTotal();
+  const noteKey = keyOf(snapshot());
+  const notes = store.get('notes', {});
+  const starBtns = Phrase.MAJORS14.map((n) => {
+    const p = c.palaces.find((q) => q.stars.some((s) => s.name === n));
+    return `<button type="button" data-libstar="${n}" data-branch="${p ? p.branch : c.ming}">${n}</button>`;
+  }).join('');
+  return `<h2>学盘 · 断语库</h2>
+  <div class="cov"><b>自建断语库（规则生成）</b><br>主星断语组合：12 宫 × 14 主星 × 3 亮度（庙旺/平/落陷）× 5 化（无化/禄/权/科/忌）× 5 层（本命/大限/流年/流月/流日）＝ <b>${total.toLocaleString()}</b> 种，另有 12 宫位、四化、格局与运限模板，按需现写。文本全部由本系统用自己的话撰写，<b>未收录、未复制原站 877 万段原文</b>，也未把原站文本编出来放进去。</div>
+  <h3>断语浏览器</h3>
+  <div class="lib-row">
+    <select class="field" id="libPalace">${['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','官禄','田宅','福德','父母'].map((n) => `<option>${n}</option>`).join('')}</select>
+    <select class="field" id="libStar">${Phrase.MAJORS14.map((n) => `<option>${n}</option>`).join('')}</select>
+    <select class="field" id="libBright">${Phrase.BRIGHTS.map((n) => `<option>${n}</option>`).join('')}</select>
+    <select class="field" id="libHua">${Phrase.HUAS.map((n) => `<option>${n}</option>`).join('')}</select>
+    <select class="field" id="libLayer">${Phrase.LAYERS.map((n) => `<option>${n}</option>`).join('')}</select>
+  </div>
+  <button class="btn" id="libGo" type="button">生成这条断语</button>
+  <div id="libOut"></div>
+  <h3>主星速查</h3><p class="muted">点一颗星看它在本盘里的解释：</p><div class="star-chips">${starBtns}</div>
+  <h3>命盘笔记</h3><p class="muted">这张盘的笔记只存在你的浏览器本地，换设备看不到。</p>
+  <textarea class="note-area" id="noteText" placeholder="写下这张盘你想记住的事，例如：换工作的时间点、大限的提醒……">${esc(notes[noteKey] || '')}</textarea>
+  <p><button class="btn secondary" id="noteSave" type="button">保存笔记</button></p>
+  <h3>读盘心法</h3>
+  ${Lore.PRINCIPLES.map(([h, p]) => `<div class="principle"><h4>${h}</h4><p>${p}</p></div>`).join('')}`;
+}
+function wireSyn() {
+  const y = $('#synYear'), m = $('#synMonth'), d = $('#synDay');
+  if (!y.options.length) {
+    for (let yy = 1900; yy <= 2100; yy++) y.add(new Option(`${yy} 年`, yy));
+    for (let mm = 1; mm <= 12; mm++) m.add(new Option(`${mm} 月`, mm));
+    for (let dd = 1; dd <= 31; dd++) d.add(new Option(`${dd} 日`, dd));
+    y.value = 1990; m.value = 1; d.value = 1;
+    if (S.syn) { y.value = S.syn.input.year; m.value = S.syn.input.month; d.value = S.syn.input.day; $('#synName').value = S.syn.input.name || ''; $('#synTime').value = S.syn.input.time || '12:00'; }
+  }
+  let g = S.syn?.input.gender || 'female';
+  $$('[data-syngender]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.syngender === g)); b.onclick = () => { g = b.dataset.syngender; $$('[data-syngender]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }; });
+  $('#synGo').onclick = () => {
+    const [hh, mi] = ($('#synTime').value || '12:00').split(':').map(Number);
+    const input = { name: $('#synName').value.trim(), gender: g, calendar: 'solar', year: +y.value, month: +m.value, day: +d.value, isLeapMonth: false, timeMode: 'clock', hour: hh, minute: mi, branch: 6, longitude: 120, tz: 8, place: '', dst: 'auto', trueSolar: true, eot: true, lateZiNextDay: true, leapMode: 'split', yearDivide: 'lunar' };
+    try { S.syn = { input: { ...input, time: $('#synTime').value }, chart: ZW.generate(input) }; }
+    catch (e) { toast(e.message || '对方资料无效'); return; }
+    renderPanel();
+  };
+}
+function wireLiuren() {
+  $('#lrGo').onclick = () => {
+    const mo = Math.max(1, Math.min(12, +$('#lrMonth').value || 1));
+    const da = Math.max(1, Math.min(30, +$('#lrDay').value || 1));
+    const hb = +$('#lrHour').value;
+    const r = Phrase.xiaoLiuRen(mo, da, hb);
+    $('#lrOut').innerHTML = `<h3>${r.god}</h3><p>${r.text}</p><p class="muted">${r.steps}</p>`;
+  };
+}
+function wireLore() {
+  $('#libGo').onclick = () => {
+    const r = Phrase.libraryPhrase($('#libPalace').value, $('#libStar').value, $('#libBright').value, $('#libHua').value, $('#libLayer').value);
+    $('#libOut').innerHTML = `<h3>${r.title}</h3><p>${r.text}</p><p class="muted">依据：${r.basis}</p>`;
+  };
+  $$('[data-libstar]').forEach((b) => b.onclick = () => openStar(b.dataset.libstar, +b.dataset.branch));
+  $('#noteSave').onclick = () => {
+    const notes = store.get('notes', {});
+    notes[keyOf(snapshot())] = $('#noteText').value;
+    store.set('notes', notes);
+    toast('笔记已保存（只存在本机浏览器）');
+  };
 }
 function openStar(name, branch) {
 const c = S.chart; if (!c) return;
@@ -2625,6 +2930,17 @@ const m = S.chart ? Reading.mingSummary(S.chart) : null;
 const text = m ? `我的紫微命盘：${m.core.names.join('、') || '命无正曜'}坐命，${S.chart.juName}。在真一紫微免费排盘：${url}` : `真一紫微 · 免费紫微斗数排盘：${url}`;
 if (navigator.share) { try { await navigator.share({ title: '真一紫微 · 紫微斗数排盘', text, url }); return; } catch (err) { /* 用户取消则走复制 */ } }
 copyText(text, '链接已复制，发给朋友打开就是同一张盘');
+}
+function fullReportText() {
+  const c = S.chart; if (!c) return '';
+  const L = [];
+  L.push(`【真一紫微】${c.input.name || ''}${c.input.gender === 'male' ? '男' : '女'} ${c.juName}`);
+  L.push(Reading.chartText(c, S.horo || S.nowHoro, S.patterns));
+  L.push('\n【十三维】');
+  for (const d of Phrase.DIMS13) { const ph = Phrase.phraseFor(c, d.key, null); L.push(`${d.label}（${ph.palaceName}）：${ph.lead}${ph.lines.join('')}`); }
+  L.push('\n【规则版深度解读】\n' + ruleDeepReading());
+  L.push('\n解读仅供参考，不构成医疗、投资、法律建议。');
+  return L.join('\n');
 }
 function chartSummaryText() {
 const c = S.chart; if (!c) return '';
@@ -2971,6 +3287,7 @@ form.querySelectorAll('[data-cal]').forEach((x) => x.setAttribute('aria-pressed'
 fName.value = ''; fYear.value = 1990; fillMonths(); fMonth.value = 1; fillDays(); fDay.value = 1; fTime.value = '00:30'; fPlace.value = '';
 setTimeMode('clock'); compute(true);
 });
+form.querySelector('#unknownTime').addEventListener('click', () => { setTimeMode('branch'); fBranch.value = '0'; toast('不知道时间就按子时起盘，也可在「只知时辰」里改'); });
 function restoreFromHash() {
 try {
 const m = location.hash.match(/#chart=([^&]+)/); if (!m) return false;
