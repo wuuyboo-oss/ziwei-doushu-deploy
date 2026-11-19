@@ -84,11 +84,12 @@ async function main() {
   check('试读：含免责声明', preview.includes('不构成医疗、投资、法律建议'));
   check('试读：不含后半段内容', !preview.includes('己段'));
 
-  // 6. 付费墙：402 体、单维 ¥9.9、Dodo 占位、无编造的订单号/链接
+  // 6. 付费墙：402 体、单维 ¥9.9、手动收款码口径、无编造的订单号/链接
   const wall = c.paywallBody('career', 0);
   check('付费墙：status=pay_required', wall.status === 'pay_required');
   check('付费墙：事业单维 ¥9.9', wall.price === 9.9);
-  check('付费墙：Dodo 占位 pending_dodo', wall.pay.status === 'pending_dodo' && wall.pay.message === '支付开通审核中');
+  check('付费墙：手动收款码 manual_qr', wall.pay.status === 'manual_qr' && wall.pay.message === '手动收款码付款，人工核对后解锁');
+  check('付费墙：文案写明手动核对、1 小时内解锁', wall.message.includes('人工核对后 1 小时内解锁'));
   check('付费墙：无订单号/支付链接字段', !('orderId' in wall) && !('order_id' in wall) && !('payUrl' in wall) && !('checkoutUrl' in wall));
   check('付费墙：全份 ¥19.9', c.paywallBody('full', 0).price === 19.9);
 
@@ -109,8 +110,109 @@ async function main() {
   // 10. 原话库已清空（商业版不收录 CC BY-NC-SA 原话）
   check('许可：TIANJI_QUOTES 已清空', Array.isArray(TIANJI_QUOTES) && TIANJI_QUOTES.length === 0, `len=${TIANJI_QUOTES?.length}`);
 
-  // 11. 付费状态：Dodo 未开通前恒为未付费
-  check('付费状态：未开通前无付费权限', c.hasPaidAccess(fp, 'full') === false);
+  // 11. 手动收款：未核对前无权限；提交申请仍无权限；核对通过后解锁；全份覆盖单维
+  c.__resetManualPayments();
+  const mfp = c.fingerprint('203.0.113.7', 'device-manual-001', 'verify-agent/1.0');
+  check('手动收款：核对前无付费权限', c.hasPaidAccess(mfp, 'full') === false);
+  check('手动收款：单号后 6 位须为 6 位数字', c.isValidTxnLast6('123456') && !c.isValidTxnLast6('12345') && !c.isValidTxnLast6('12345a') && !c.isValidTxnLast6(''));
+  check('手动收款：渠道归一化', c.normalizeChannel('wechat') === 'wechat' && c.normalizeChannel('alipay') === 'alipay' && c.normalizeChannel('cash') === null);
+  const claim = c.saveManualPaymentClaim({
+    fpHash: mfp, deviceId: 'device-manual-001', scope: 'full', price: 19.9,
+    channel: 'wechat', txnLast6: '123456', screenshotFile: '',
+  });
+  check('手动收款：提交申请后仍无权限（待核对）', c.hasPaidAccess(mfp, 'full') === false);
+  check('手动收款：清单里能查到待核对申请', c.listManualPaymentClaims().some((x) => x.id === claim.id && x.status === 'pending'));
+  const reviewed = c.reviewManualPaymentClaim(claim.id, 'approved', 'verify');
+  check('手动收款：核对通过后解锁全份', reviewed?.status === 'approved' && c.hasPaidAccess(mfp, 'full') === true);
+  check('手动收款：全份通过后单维也解锁', c.hasPaidAccess(mfp, 'career') === true && c.hasPaidAccess(mfp, 'love') === true);
+  check('手动收款：重复核对返回 null', c.reviewManualPaymentClaim(claim.id, 'approved') === null);
+  const claim2 = c.saveManualPaymentClaim({
+    fpHash: mfp, deviceId: 'device-manual-001', scope: 'career', price: 9.9,
+    channel: 'alipay', txnLast6: '654321', screenshotFile: '',
+  });
+  check('手动收款：驳回不解锁', (() => {
+    const mfp2 = c.fingerprint('203.0.113.8', 'device-manual-002', 'verify-agent/1.0');
+    const cl = c.saveManualPaymentClaim({
+      fpHash: mfp2, deviceId: 'device-manual-002', scope: 'love', price: 9.9,
+      channel: 'alipay', txnLast6: '111111', screenshotFile: '',
+    });
+    return c.reviewManualPaymentClaim(cl.id, 'rejected', 'verify')?.status === 'rejected' && c.hasPaidAccess(mfp2, 'love') === false;
+  })());
+  void claim2;
+
+  // 12. 收款码占位图：4 张 SVG 都在，且写明占位、没有可扫的二维码
+  const { existsSync: _exists, readFileSync: _read } = await import('node:fs');
+  const { join: _join } = await import('node:path');
+  const qrFiles = ['wechat-full.svg', 'wechat-single.svg', 'alipay-full.svg', 'alipay-single.svg'];
+  check('收款码：4 张占位 SVG 都存在', qrFiles.every((f) => _exists(_join(process.cwd(), 'public', 'pay-qr', f))));
+  check('收款码：占位图写明请勿扫码付款', qrFiles.every((f) => _read(_join(process.cwd(), 'public', 'pay-qr', f), 'utf-8').includes('请勿扫码付款')));
+
+  // 13. 太岁入卦：2026 丙午年太岁在午宫；1990-01-01 盘午宫为交友宫
+  const { taiSui } = await import('../lib/ziwei/taisui');
+  const ts2026 = taiSui(chart, 2026);
+  check('太岁：2026 年干支丙午', ts2026.ganzhi === '丙午', ts2026.ganzhi);
+  check('太岁：2026 太岁在交友宫', ts2026.palaceName === '交友', ts2026.palaceName);
+  check('太岁：解读文字非空', ts2026.text.length > 10);
+  const ts2027 = taiSui(chart, 2027);
+  check('太岁：2027 年太岁移宫', ts2027.palaceName !== ts2026.palaceName && ts2027.ganzhi === '丁未', `${ts2027.ganzhi}${ts2027.palaceName}`);
+
+  // 14. 合八字 + 合盘规则版逐宫：对方 1992-05-10 12:00（午时）
+  const chartB = generateChart({ year: 1992, month: 5, day: 10, hour: 6, gender: 'female' });
+  const { baziMatch, synastryRule, buildRuleHeming } = await import('../lib/ziwei/heming');
+  const bz = baziMatch(chart, chartB);
+  check('合八字：四柱 4 行', !!bz && bz.rows.length === 4, JSON.stringify(bz?.rows));
+  check('合八字：含日柱最重', !!bz && bz.lines.some((l) => l.includes('日柱最重')));
+  check('合八字：总判非空', !!bz && bz.verdict.length > 5);
+  check('合八字：缺四柱返回 null', baziMatch({ ...chart, lunarInfo: { ...chart.lunarInfo, fourPillars: undefined } }, chartB) === null);
+  const syn = synastryRule(chart, chartB);
+  check('合盘规则版：逐宫 6 行', syn.rows.length === 6, String(syn.rows.length));
+  check('合盘规则版：含命宫/夫妻宫/福德宫', ['命宫', '夫妻宫', '福德宫'].every((n) => syn.rows.some((r) => r.palace === n)));
+  check('合盘规则版：总判非空', syn.verdict.length > 5);
+  const ruleHeming = buildRuleHeming(chart, chartB, '感情匹配度如何？');
+  check('合盘规则版全文：含合八字', ruleHeming.includes('合八字'));
+  check('合盘规则版全文：含逐宫标题', ruleHeming.includes('【命宫'));
+  check('合盘规则版全文：末尾免责声明', ruleHeming.trimEnd().endsWith(c.DISCLAIMER));
+
+  // 15. 命运双子星：抽样 120 张、确定性、诚实覆盖范围
+  const { findTwinStars, TWIN_STAR_COVERAGE } = await import('../lib/ziwei/twin-star');
+  const t1 = Date.now();
+  const twins = findTwinStars(chart, 5);
+  const twinMs = Date.now() - t1;
+  check('双子星：返回 5 张', twins.twins.length === 5, String(twins.twins.length));
+  check('双子星：抽样 120 张', twins.sampleSize === 120, String(twins.sampleSize));
+  check('双子星：相似度 0-100 且降序', twins.twins.every((t) => t.similarity >= 0 && t.similarity <= 100)
+    && twins.twins.every((t, i, a) => i === 0 || t.similarity <= a[i - 1].similarity));
+  check('双子星：每张有相似点说明', twins.twins.every((t) => t.points.length > 0));
+  check('双子星：不含本人同日同时辰盘', twins.twins.every((t) => !(t.birth.year === 1990 && t.birth.month === 1 && t.birth.day === 1 && t.birth.hour === 0)));
+  check('双子星：同一盘两次结果相同（种子固定）', JSON.stringify(findTwinStars(chart, 5).twins) === JSON.stringify(twins.twins));
+  check('双子星：覆盖写清 120 张抽样', TWIN_STAR_COVERAGE.includes('120'));
+  check('双子星：诚实声明未接入 67.5 万盘大库', TWIN_STAR_COVERAGE.includes('67.5 万') && TWIN_STAR_COVERAGE.includes('没有接入'));
+  console.log(`  （双子星一次抽样耗时 ${twinMs}ms）`);
+
+  // 16. 学盘课程：6 课、文字图解、无视频声明
+  const course = await import('../lib/ziwei/course');
+  check('课程：共 6 课', course.COURSE_LESSONS.length === 6, String(course.COURSE_LESSONS.length));
+  check('课程：第一课十二宫', course.COURSE_LESSONS[0].title.includes('十二宫'));
+  check('课程：每课有讲稿', course.COURSE_LESSONS.every((l) => l.script.length > 0 && l.script.join('').length > 50));
+  check('课程：主星表 14 行', course.COURSE_STAR_ROWS.length === 14);
+  check('课程：四化表 10 行', course.COURSE_SIHUA_ROWS.length === 10);
+  check('课程：看盘五步 5 步', course.COURSE_STEPS.length === 5);
+  check('课程：声明只有文字图解、没有视频', course.COURSE_INTRO.includes('没有视频'));
+
+  // 17. 限流 429 带 retryAfterSeconds（前端倒计时用）
+  c.__resetRateLimits();
+  const ip2 = '203.0.113.99';
+  c.checkRateLimit(ip2); c.checkRateLimit(ip2); c.checkRateLimit(ip2);
+  const blocked = c.checkRateLimit(ip2);
+  check('限流：429 带 retryAfterSeconds', !blocked.allowed && typeof blocked.retryAfterSeconds === 'number' && blocked.retryAfterSeconds >= 1 && blocked.retryAfterSeconds <= 60, JSON.stringify(blocked));
+
+  // 18. 第二张回归盘：1990-05-15 08:00 男正常
+  const chart2 = generateChart({ year: 1990, month: 5, day: 15, hour: 4, gender: 'male' });
+  check('回归盘2：火六局', chart2.wuxingJuName === '火六局', chart2.wuxingJuName);
+  const ming2 = chart2.palaces.find((p) => p.branch === chart2.mingGongBranch);
+  check('回归盘2：命宫天机', ming2?.stars.some((s) => s.name === '天机') ?? false, JSON.stringify(ming2?.stars));
+  check('回归盘2：太岁 2026 可算', taiSui(chart2, 2026).palaceName.length > 0);
+  check('回归盘2：双子星可算', findTwinStars(chart2, 3).twins.length === 3);
 
   console.log(`\n结果：${pass} 通过，${fail} 失败`);
   if (fail > 0) process.exit(1);

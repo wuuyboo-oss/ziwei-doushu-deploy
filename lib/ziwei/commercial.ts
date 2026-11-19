@@ -10,9 +10,14 @@
  * - 限流（内存）：每 IP 每分钟最多 3 次 AI 请求，每日上限 20 次。
  * - 防刷：请求体 ≤ 64 KiB；出生日期合法性校验（真实存在的日期、1900 年后、
  *   不晚于今天、时辰 0–11、性别 male/female）。
- * - 付费在 Dodo 审核通过前一律不可用：hasPaidAccess() 目前恒为 false，
- *   付费解锁记录（paidUnlocks）为空实现，等 /api/pay webhook 接入后再启用。
- *   不要编造已开通、支付链接或订单号。
+ * - 付费在自动收款接通前一律走手动收款码：用户扫微信/支付宝收款码
+ *   付款（占位图在 public/pay-qr/，真码由 sir 替换同名 PNG），再点“我已付款”
+ *   提交交易单号后 6 位（可附付款截图），人工核对后在待核对清单里标记为已付费，
+ *   hasPaidAccess() 才对该指纹 + 档位返回 true。
+ *   不要编造已开通、支付链接、订单号或已收款。
+ * - 待核对清单与手动付费记录存在本地 JSON 文件（.data/commercial/，
+ *   可用 COMMERCIAL_DATA_DIR 覆盖）；Render 免费档容器重建会丢记录，
+ *   须在重建前核对完，见 MANUAL-PAYMENT-README.md。
  *
  * 密钥：本文件不含任何密钥。AI 调用仍走 DeepSeek helper（本地开发）或
  * 环境变量 DEEPSEEK_API_KEY（部署环境，服务端 env，不进代码/仓库）。
@@ -103,7 +108,7 @@ interface RateBucket {
 
 const rateBuckets = new Map<string, RateBucket>();
 
-export function checkRateLimit(ip: string): { allowed: boolean; reason?: string } {
+export function checkRateLimit(ip: string): { allowed: boolean; reason?: string; retryAfterSeconds?: number } {
   const now = Date.now();
   const minuteStart = Math.floor(now / 60_000) * 60_000;
   const dayKey = new Date(now).toISOString().slice(0, 10);
@@ -116,10 +121,12 @@ export function checkRateLimit(ip: string): { allowed: boolean; reason?: string 
     b.dayCount = 0;
   }
   if (b.minuteCount >= RATE_LIMIT_PER_MINUTE) {
-    return { allowed: false, reason: `每分钟最多 ${RATE_LIMIT_PER_MINUTE} 次 AI 请求，请稍后再试` };
+    // 距下一分钟窗口开始的秒数，供前端倒计时用（前端只提示一次）
+    const retryAfterSeconds = Math.max(1, Math.ceil((minuteStart + 60_000 - now) / 1000));
+    return { allowed: false, reason: `每分钟最多 ${RATE_LIMIT_PER_MINUTE} 次 AI 请求，请稍后再试`, retryAfterSeconds };
   }
   if (b.dayCount >= RATE_LIMIT_PER_DAY) {
-    return { allowed: false, reason: `今日 AI 请求已达上限（${RATE_LIMIT_PER_DAY} 次），请明天再试` };
+    return { allowed: false, reason: `今日 AI 请求已达上限（${RATE_LIMIT_PER_DAY} 次），请明天再试`, retryAfterSeconds: 3600 };
   }
   b.minuteCount += 1;
   b.dayCount += 1;
@@ -209,15 +216,184 @@ export function __resetFreeUses(): void {
   }
 }
 
-// ────────────────── 付费状态（Dodo 未开通前恒为未付费） ──────────────────
+// ────────────────── 付费状态（手动收款码：人工核对后标记） ──────────────────
+
+export type ManualPayChannel = 'wechat' | 'alipay';
+export type ManualClaimStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ManualPaymentClaim {
+  id: string;
+  createdAt: string;
+  fpHash: string;
+  deviceId: string;
+  scope: PayScope;
+  price: number;
+  channel: ManualPayChannel;
+  /** 微信/支付宝交易单号后 6 位数字 */
+  txnLast6: string;
+  /** 付款截图在服务器上的相对文件名（.data/commercial/manual-payments/ 下），无截图为空 */
+  screenshotFile: string;
+  status: ManualClaimStatus;
+  reviewedAt?: string;
+  reviewNote?: string;
+}
+
+interface ManualPaidStore {
+  [fpHash: string]: { scopes: PayScope[]; approvedAt: string; claimId: string };
+}
+
+const manualClaims: ManualPaymentClaim[] = [];
+let manualClaimsLoaded = false;
+const manualPaid: ManualPaidStore = {};
+let manualPaidLoaded = false;
+
+function claimsPath(): string | null {
+  const dir = process.env.COMMERCIAL_DATA_DIR
+    || join(process.cwd(), '.data', 'commercial');
+  try {
+    mkdirSync(dir, { recursive: true });
+    return join(dir, 'manual-payments.json');
+  } catch {
+    return null;
+  }
+}
+
+function paidPath(): string | null {
+  const dir = process.env.COMMERCIAL_DATA_DIR
+    || join(process.cwd(), '.data', 'commercial');
+  try {
+    mkdirSync(dir, { recursive: true });
+    return join(dir, 'manual-paid.json');
+  } catch {
+    return null;
+  }
+}
+
+function loadManualClaims(): ManualPaymentClaim[] {
+  if (manualClaimsLoaded) return manualClaims;
+  manualClaimsLoaded = true;
+  const p = claimsPath();
+  if (p && existsSync(p)) {
+    try {
+      const parsed = JSON.parse(readFileSync(p, 'utf-8')) as ManualPaymentClaim[];
+      if (Array.isArray(parsed)) manualClaims.push(...parsed);
+    } catch { /* 文件损坏：从空开始，不阻塞服务 */ }
+  }
+  return manualClaims;
+}
+
+function saveManualClaims(): void {
+  const p = claimsPath();
+  if (!p) return;
+  try {
+    writeFileSync(p, JSON.stringify(manualClaims, null, 2), 'utf-8');
+  } catch { /* 磁盘写失败不阻塞服务 */ }
+}
+
+function loadManualPaid(): ManualPaidStore {
+  if (manualPaidLoaded) return manualPaid;
+  manualPaidLoaded = true;
+  const p = paidPath();
+  if (p && existsSync(p)) {
+    try {
+      Object.assign(manualPaid, JSON.parse(readFileSync(p, 'utf-8')) as ManualPaidStore);
+    } catch { /* 文件损坏：从空开始 */ }
+  }
+  return manualPaid;
+}
+
+function saveManualPaid(): void {
+  const p = paidPath();
+  if (!p) return;
+  try {
+    writeFileSync(p, JSON.stringify(manualPaid, null, 2), 'utf-8');
+  } catch { /* 磁盘写失败不阻塞服务 */ }
+}
+
+/** 交易单号后 6 位：须为 6 位数字。 */
+export function isValidTxnLast6(v: unknown): v is string {
+  return typeof v === 'string' && /^\d{6}$/.test(v);
+}
+
+/** 付款渠道归一化；非法值返回 null。 */
+export function normalizeChannel(input: unknown): ManualPayChannel | null {
+  if (input === 'wechat' || input === 'alipay') return input;
+  return null;
+}
+
+/** 生成一条付款申请编号（只做去重标识，不是订单号、不代表已收款）。 */
+export function newClaimId(): string {
+  return `mp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** 保存一条“我已付款”申请（状态 pending，待人工核对）。 */
+export function saveManualPaymentClaim(
+  claim: Omit<ManualPaymentClaim, 'id' | 'createdAt' | 'status'>,
+): ManualPaymentClaim {
+  const list = loadManualClaims();
+  const rec: ManualPaymentClaim = {
+    ...claim,
+    id: newClaimId(),
+    createdAt: new Date().toISOString(),
+    status: 'pending',
+  };
+  list.push(rec);
+  saveManualClaims();
+  return rec;
+}
+
+/** 待核对清单：最新在前。 */
+export function listManualPaymentClaims(): ManualPaymentClaim[] {
+  return [...loadManualClaims()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+/** 按申请编号改状态；approved 时同时把该指纹 + 档位记为已付费。 */
+export function reviewManualPaymentClaim(
+  id: string,
+  status: 'approved' | 'rejected',
+  note = '',
+): ManualPaymentClaim | null {
+  const list = loadManualClaims();
+  const rec = list.find((c) => c.id === id);
+  if (!rec || rec.status !== 'pending') return null;
+  rec.status = status;
+  rec.reviewedAt = new Date().toISOString();
+  if (note) rec.reviewNote = note;
+  saveManualClaims();
+  if (status === 'approved') {
+    const paid = loadManualPaid();
+    const cur = paid[rec.fpHash] ?? { scopes: [], approvedAt: rec.reviewedAt, claimId: rec.id };
+    if (!cur.scopes.includes(rec.scope)) cur.scopes.push(rec.scope);
+    cur.approvedAt = rec.reviewedAt;
+    cur.claimId = rec.id;
+    paid[rec.fpHash] = cur;
+    saveManualPaid();
+  }
+  return rec;
+}
 
 /**
- * 付费解锁记录：目前为空实现。Dodo 支付开通并接好 webhook/订单校验后，
- * 在这里按指纹 + scope 查已付款记录；在此之前一律返回 false，
- * 绝不编造“已支付”。
+ * 是否已付费：人工核对通过后才为 true。
+ * 全份（full）通过后，单维（career/love）同样解锁。
  */
-export function hasPaidAccess(_fpHash: string, _scope: PayScope): boolean {
-  return false;
+export function hasPaidAccess(fpHash: string, scope: PayScope): boolean {
+  const paid = loadManualPaid();
+  const scopes = paid[fpHash]?.scopes ?? [];
+  return scopes.includes(scope) || scopes.includes('full');
+}
+
+/** 仅供本地验证脚本使用：清空内存 + 文件里的手动付款记录。 */
+export function __resetManualPayments(): void {
+  manualClaims.length = 0;
+  for (const k of Object.keys(manualPaid)) delete manualPaid[k];
+  const cp = claimsPath();
+  if (cp) {
+    try { writeFileSync(cp, JSON.stringify([], null, 2), 'utf-8'); } catch { /* 忽略 */ }
+  }
+  const pp = paidPath();
+  if (pp) {
+    try { writeFileSync(pp, JSON.stringify({}, null, 2), 'utf-8'); } catch { /* 忽略 */ }
+  }
 }
 
 // ────────────────── 免费试读截断 ──────────────────
@@ -244,7 +420,7 @@ export function withDisclaimer(text: string): string {
   return text.includes('不构成医疗、投资、法律建议') ? text : `${text.trimEnd()}\n\n${DISCLAIMER}`;
 }
 
-/** 付费墙响应体（402）。pay 字段与 /api/pay/create 的占位口径一致。 */
+/** 付费墙响应体（402）。pay 字段与手动收款码口径一致。 */
 export function paywallBody(scope: PayScope, freeUsesLeft: number) {
   const price = PRICING[scope];
   return {
@@ -259,7 +435,7 @@ export function paywallBody(scope: PayScope, freeUsesLeft: number) {
       love: { price: PRICING.love.price, label: PRICING.love.label },
     },
     freeUsesLeft,
-    pay: { status: 'pending_dodo', message: '支付开通审核中' },
-    message: `AI 深度解盘需付费解锁：${price.label} ¥${price.price}。支付开通审核中，稍后再试。规则版解读仍可免费使用。`,
+    pay: { status: 'manual_qr', message: '手动收款码付款，人工核对后解锁' },
+    message: `AI 深度解盘需付费解锁：${price.label} ¥${price.price}。请扫收款码付款后点“我已付款”提交，人工核对后 1 小时内解锁，不是即时自动到账。规则版解读仍可免费使用。`,
   };
 }

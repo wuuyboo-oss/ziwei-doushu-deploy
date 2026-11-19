@@ -185,7 +185,7 @@ export async function GET(req: NextRequest) {
       love: { price: PRICING.love.price, label: PRICING.love.label },
     },
     freeUsesLeft: getFreeUsesLeft(fp),
-    pay: { status: 'pending_dodo', message: '支付开通审核中' },
+    pay: { status: 'manual_qr', message: '手动收款码付款，人工核对后解锁' },
     disclaimer: DISCLAIMER,
     note: ai
       ? 'AI 解读已配置（首次免费 1 次，仅命格总览前半段；之后付费解锁）'
@@ -254,7 +254,10 @@ export async function POST(req: NextRequest) {
   // ── AI 路径：先限流，再算付费墙（付费墙内请求不调用模型，不烧 token） ──
   const limit = checkRateLimit(ip);
   if (!limit.allowed) {
-    return Response.json({ error: limit.reason ?? '请求太频繁', status: 'rate_limited' }, { status: 429 });
+    return Response.json(
+      { error: limit.reason ?? '请求太频繁', status: 'rate_limited', retryAfterSeconds: limit.retryAfterSeconds ?? 60 },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds ?? 60) } },
+    );
   }
   const freeLeft = getFreeUsesLeft(fp);
   const isFreePreview = scope === 'full' && freeLeft > 0 && !hasPaidAccess(fp, scope);

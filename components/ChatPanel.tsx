@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart } from '@/lib/ziwei/types';
 import PaywallCard from './PaywallCard';
+import { useRateLimitNotice } from './useRateLimitNotice';
 
 /** 设备指纹 ID：浏览器 localStorage 里存一个随机值，随 AI 请求发给服务端计免费次数。 */
 function getDeviceId(): string {
@@ -43,6 +44,8 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [paywall, setPaywall] = useState<{ scope: 'full' | 'career' | 'love'; price: number; label: string } | null>(null);
+  // 限流只提示一次：429 不再往对话里追加多条报错，按钮禁用并显示倒计时
+  const rateLimit = useRateLimitNotice();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +56,8 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
+    // 限流期间禁止再发 AI 请求（从源头上不再产生新的 429）
+    if (rateLimit.limited) return;
     const userMsg: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -72,12 +77,13 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
         const price = typeof j?.price === 'number' ? j.price : scope === 'full' ? 19.9 : 9.9;
         const label = typeof j?.label === 'string' ? j.label : scope === 'full' ? '全份报告' : scope === 'career' ? '单维·事业' : '单维·感情';
         setPaywall({ scope, price, label });
-        setMessages(prev => [...prev, { role: 'assistant', content: j?.message ?? 'AI 深度解盘需付费解锁。支付开通审核中，稍后再试。规则版解读仍可免费使用。' }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: j?.message ?? 'AI 深度解盘需付费解锁：请扫收款码付款后点“我已付款”提交，人工核对后 1 小时内解锁。规则版解读仍可免费使用。' }]);
         return;
       }
       if (res.status === 429) {
         const j = await res.json().catch(() => null);
-        setMessages(prev => [...prev, { role: 'assistant', content: j?.error ?? '请求太频繁，请稍后再试。' }]);
+        // 只提示一次：同一限流窗口内不再追加、不刷屏；按钮禁用 + 倒计时
+        rateLimit.note429(j);
         return;
       }
       if (!res.ok) throw new Error('请求失败');
@@ -132,6 +138,13 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
 
       {/* 消息列表 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+        {/* 限流单次提示：同一窗口只出现一次，带倒计时，期间按钮禁用 */}
+        {rateLimit.notice && (
+          <div className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+            style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}>
+            {rateLimit.notice}（请 {rateLimit.secondsLeft} 秒后再试）
+          </div>
+        )}
         {messages.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8">
             <div className="text-4xl mb-3" style={{ color: 'var(--t-gold)', opacity: 0.15 }}>✦</div>
@@ -190,7 +203,7 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
               <button
                 key={i}
                 onClick={() => sendMessage(q)}
-                disabled={loading}
+                disabled={loading || rateLimit.limited}
                 className="text-left text-[10px] rounded-lg px-2.5 py-2 transition-all line-clamp-2"
                 style={{
                   color: 'var(--t-text2)',
@@ -222,7 +235,7 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
             placeholder="输入问题，如：我的感情运势如何？"
-            disabled={loading}
+            disabled={loading || rateLimit.limited}
             className="flex-1 rounded-lg px-3 py-2 text-xs focus:outline-none transition-colors"
             style={{
               background: 'var(--t-card)',
@@ -232,7 +245,7 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
           />
           <button
             onClick={() => sendMessage(input)}
-            disabled={loading || !input.trim()}
+            disabled={loading || rateLimit.limited || !input.trim()}
             className="px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               background: 'rgba(212,168,67,0.15)',

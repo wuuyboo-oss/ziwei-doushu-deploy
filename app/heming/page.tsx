@@ -6,6 +6,25 @@ import { formToBirthInfo } from '@/lib/ziwei/share';
 import { generateChart as buildChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart } from '@/lib/ziwei/types';
 import { useTheme } from '@/components/ThemeProvider';
+import PaywallCard from '@/components/PaywallCard';
+import { useRateLimitNotice } from '@/components/useRateLimitNotice';
+import { baziMatch, synastryRule, type BaziResult, type SynastryResult } from '@/lib/ziwei/heming';
+
+/** 设备指纹 ID：与 InsightPanel 同一套，随 AI 请求发给服务端计免费次数。 */
+function getDeviceId(): string {
+  try {
+    let id = localStorage.getItem('ziwei-device-id');
+    if (!id) {
+      id = (crypto as unknown as { randomUUID?: () => string }).randomUUID
+        ? (crypto as unknown as { randomUUID: () => string }).randomUUID()
+        : `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('ziwei-device-id', id);
+    }
+    return id;
+  } catch {
+    return '';
+  }
+}
 
 // ─── AiContent 渲染器（与 InsightPanel 一致）────────────────
 function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
@@ -64,6 +83,12 @@ export default function HemingPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [question, setQuestion] = useState('');
   const [analysisError, setAnalysisError] = useState(false);
+  // 规则版逐宫对照 + 合八字：起盘后立刻在本地算出，免费，不调 AI
+  const [ruleSyn, setRuleSyn] = useState<SynastryResult | null>(null);
+  const [bazi, setBazi] = useState<BaziResult | null>(null);
+  const [paywall, setPaywall] = useState<{ scope: 'full' | 'career' | 'love'; price: number; label: string } | null>(null);
+  // 限流只提示一次：429 不刷屏，按钮禁用并显示倒计时
+  const rateLimit = useRateLimitNotice();
   // 开源版不含 /api/heming：接口 404 时单独说明，而不是让用户反复重试
   const [apiMissing, setApiMissing] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -83,16 +108,19 @@ export default function HemingPage() {
   const isFormReady = (f: BirthFormState | null): boolean =>
     !!(f && f.year && f.month && f.day && f.gender && (f.unknownTime || (f.clockHour !== '' && f.clockMinute !== '')));
 
-  // ─── 统一入口：起盘 + 合盘分析 ─────────────────────────────
+  // ─── 统一入口：起盘 + 规则版对照 + AI 逐宫分析 ─────────────
   const runAnalysis = useCallback(async (q?: string) => {
     setFormError(null);
     if (!isFormReady(formA) || !isFormReady(formB)) {
       setFormError('请先填写双方完整出生信息');
       return;
     }
+    // 限流期间禁止再发 AI 请求（从源头上不再产生新的 429）
+    if (rateLimit.limited) return;
     setAnalyzing(true);
     setAnalysis('');
     setAnalysisError(false);
+    setPaywall(null);
 
     try {
       // 每次按当前表单起盘，避免编辑出生信息后复用旧盘。
@@ -107,13 +135,30 @@ export default function HemingPage() {
       }
       setChartA(cA);
       setChartB(cB);
+      // 规则版逐宫对照 + 合八字：本地即时算出，免费，不调 AI。
+      setRuleSyn(synastryRule(cA, cB));
+      setBazi(baziMatch(cA, cB));
 
       const res = await fetch('/api/heming', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chartA: cA, chartB: cB, question: q ?? undefined }),
+        body: JSON.stringify({ chartA: cA, chartB: cB, question: q ?? undefined, deviceId: getDeviceId() }),
       });
       if (res.status === 404) { setApiMissing(true); throw new Error('api-missing'); }
+      if (res.status === 402) {
+        const j = await res.json().catch(() => null);
+        const scope = (j?.scope === 'career' || j?.scope === 'love') ? j.scope : 'full';
+        const price = typeof j?.price === 'number' ? j.price : 19.9;
+        const label = typeof j?.label === 'string' ? j.label : '全份报告';
+        setPaywall({ scope, price, label });
+        return;
+      }
+      if (res.status === 429) {
+        const j = await res.json().catch(() => null);
+        // 只提示一次：同一限流窗口内不再追加、不刷屏
+        rateLimit.note429(j);
+        return;
+      }
       if (!res.ok || !res.body) throw new Error();
 
       const reader = res.body.getReader();
@@ -146,7 +191,7 @@ export default function HemingPage() {
     } finally {
       setAnalyzing(false);
     }
-  }, [formA, formB, generateChart]);
+  }, [formA, formB, generateChart, rateLimit]);
 
   const cardStyle = {
     background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.9)',
@@ -196,7 +241,7 @@ export default function HemingPage() {
             紫微合盘
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--tx-3)', lineHeight: 1.6 }}>
-            输入两个人的出生信息，AI 基于倪海厦体系分析双方命盘的缘分匹配度、感情走向与相处建议
+            输入两个人的出生信息，先看免费的规则版逐宫对照与合八字，再由 AI 逐宫解读双方命盘的缘分匹配度、感情走向与相处建议
           </p>
         </div>
 
@@ -244,22 +289,23 @@ export default function HemingPage() {
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ fontSize: '13px', color: 'var(--tx-3)', marginBottom: '24px', lineHeight: 1.7 }}>
                 填好双方出生信息后，点击下方按钮<br />
-                AI 将基于倪海厦体系深度分析两人缘分匹配度
+                先出免费的规则版逐宫对照与合八字，再由 AI 逐宫解读（首次免费）
               </div>
               <button
                 onClick={() => runAnalysis()}
+                disabled={rateLimit.limited}
                 style={{
                   padding: '14px 40px', borderRadius: 'var(--r-pill)', border: 'none',
-                  background: 'linear-gradient(135deg, #9a6210, #c88020)',
-                  color: '#fff8e8', fontSize: '14px', fontWeight: 600,
-                  letterSpacing: '0.15em', cursor: 'pointer',
+                  background: rateLimit.limited ? 'var(--bg-2)' : 'linear-gradient(135deg, #9a6210, #c88020)',
+                  color: rateLimit.limited ? 'var(--tx-3)' : '#fff8e8', fontSize: '14px', fontWeight: 600,
+                  letterSpacing: '0.15em', cursor: rateLimit.limited ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 16px rgba(140,100,20,0.25)',
                   transition: 'transform 0.15s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
+                onMouseEnter={e => { if (!rateLimit.limited) (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
               >
-                开始合盘分析
+                {rateLimit.limited ? `请 ${rateLimit.secondsLeft} 秒后再试` : '开始合盘分析'}
               </button>
               {formError && (
                 <div style={{ marginTop: '20px', fontSize: '13px', color: '#dc2626' }}>
@@ -282,14 +328,84 @@ export default function HemingPage() {
 
           {analysis && <AiContent text={analysis} streaming={analyzing} />}
 
+          {/* 限流单次提示：同一窗口只出现一次，带倒计时 */}
+          {rateLimit.notice && (
+            <div style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(248,113,113,0.4)', background: 'rgba(248,113,113,0.08)', fontSize: '13px', color: '#f87171', marginTop: '12px' }}>
+              {rateLimit.notice}（请 {rateLimit.secondsLeft} 秒后再试）
+            </div>
+          )}
+
+          {paywall && (
+            <div style={{ marginTop: '12px' }}>
+              <PaywallCard scope={paywall.scope} price={paywall.price} label={paywall.label} />
+            </div>
+          )}
+
           {analysisError && (
             <div style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--bdr)', background: 'var(--bg-card)', fontSize: '13px', color: 'var(--tx-2)', marginTop: '12px' }}>
               {apiMissing
-                ? '开源版不含合盘 AI 分析接口（/api/heming），需要你自己实现后才能用。两人的命盘可以分别到「排盘」页（/chart）查看。'
-                : '分析暂时不可用，请重试。'}
+                ? '合盘 AI 分析接口（/api/heming）未返回，可能是线上部署还是旧版本；规则版逐宫对照与合八字仍在下方可见，两人的命盘也可以分别到「排盘」页（/chart）查看。'
+                : '分析暂时不可用，请重试。规则版逐宫对照与合八字仍在下方可见。'}
             </div>
           )}
         </div>
+
+        {/* ═══ 规则版逐宫对照（免费，起盘后立刻可见）══════════════ */}
+        {ruleSyn && (
+          <div style={{ ...cardStyle, marginTop: '16px' }}>
+            <span style={labelStyle}>规则版逐宫对照 · 免费</span>
+            <div style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--tx-2)', marginBottom: '16px' }}>
+              {ruleSyn.verdict}
+            </div>
+            {ruleSyn.rows.map((row) => (
+              <div key={row.palace} style={{ padding: '12px 0', borderTop: '1px solid var(--bdr)' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--tx-0)', marginBottom: '4px' }}>
+                  【{row.palace} · {row.role}】
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--tx-2)', lineHeight: 1.7 }}>
+                  甲方：{row.aStars.join('、') || '空宫'}{row.aSihua ? `（${row.aSihua}）` : ''}；
+                  乙方：{row.bStars.join('、') || '空宫'}{row.bSihua ? `（${row.bSihua}）` : ''}。
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--tx-2)', lineHeight: 1.7 }}>{row.note}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ═══ 合八字 · 四柱干支对照（免费，规则版）════════════════ */}
+        {bazi && (
+          <div style={{ ...cardStyle, marginTop: '16px' }}>
+            <span style={labelStyle}>合八字 · 四柱干支对照</span>
+            <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse', marginBottom: '12px' }}>
+              <thead>
+                <tr style={{ color: 'var(--tx-3)', textAlign: 'left' }}>
+                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>四柱</th>
+                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>甲方</th>
+                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>乙方</th>
+                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>天干关系</th>
+                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>地支关系</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bazi.rows.map((r) => (
+                  <tr key={r.label} style={{ color: 'var(--tx-2)' }}>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>{r.label}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>{r.a}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>{r.b}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>{r.stemRel}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--bdr)' }}>{r.branchRel}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {bazi.lines.map((line, i) => (
+              <div key={i} style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--tx-2)', marginBottom: '6px' }}>{line}</div>
+            ))}
+            <div style={{ fontSize: '12px', color: 'var(--tx-3)', marginTop: '8px', lineHeight: 1.6 }}>
+              合盘与合八字均为规则对比（本命对照），未调用 AI，仅供参考；合八字只看干支合冲，不能单独断婚姻，须再对照两张紫微盘的夫妻宫与生年四化。
+            </div>
+          </div>
+        )}
 
         {/* ═══ 针对合盘的追问聊天框（仅分析完成后显示）═══════════ */}
         {analysis && (
@@ -310,7 +426,7 @@ export default function HemingPage() {
                 <button
                   key={q}
                   onClick={() => { setQuestion(q); runAnalysis(q); }}
-                  disabled={analyzing}
+                  disabled={analyzing || rateLimit.limited}
                   style={{
                     fontSize: '12px', padding: '6px 14px',
                     borderRadius: 'var(--r-pill)',
@@ -336,13 +452,13 @@ export default function HemingPage() {
                 onChange={e => setQuestion(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !analyzing) runAnalysis(question || undefined); }}
                 placeholder="继续追问，如：哪几年是两人感情关键期？"
-                disabled={analyzing}
+                disabled={analyzing || rateLimit.limited}
                 className="input-base"
                 style={{ fontSize: '13px', flex: 1 }}
               />
               <button
                 onClick={() => runAnalysis(question || undefined)}
-                disabled={analyzing}
+                disabled={analyzing || rateLimit.limited}
                 style={{
                   padding: '10px 20px', borderRadius: 'var(--r-sm)', border: 'none',
                   background: analyzing ? 'var(--bg-2)' : 'var(--tx-0)',

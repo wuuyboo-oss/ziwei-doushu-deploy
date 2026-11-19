@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
 import PaywallCard from './PaywallCard';
+import { useRateLimitNotice } from './useRateLimitNotice';
 
 /** 设备指纹 ID：浏览器 localStorage 里存一个随机值，随 AI 请求发给服务端计免费次数。 */
 function getDeviceId(): string {
@@ -299,6 +300,9 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
 
   const [paywall, setPaywall] = useState<{ scope: 'full' | 'career' | 'love'; price: number; label: string } | null>(null);
 
+  // 限流只提示一次：429 不再往对话里追加多条报错，按钮禁用并显示倒计时
+  const rateLimit = useRateLimitNotice();
+
   const streamResponse = async (apiMessages: { role: 'user' | 'assistant'; content: string }[]) => {
     try {
       const res = await fetch('/api/interpret', {
@@ -313,12 +317,13 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
         const price = typeof j?.price === 'number' ? j.price : scope === 'full' ? 19.9 : 9.9;
         const label = typeof j?.label === 'string' ? j.label : scope === 'full' ? '全份报告' : scope === 'career' ? '单维·事业' : '单维·感情';
         setPaywall({ scope, price, label });
-        setMessages(prev => [...prev, { role: 'assistant', content: j?.message ?? 'AI 深度解盘需付费解锁。支付开通审核中，稍后再试。规则版解读仍可免费使用。' }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: j?.message ?? 'AI 深度解盘需付费解锁：请扫收款码付款后点“我已付款”提交，人工核对后 1 小时内解锁。规则版解读仍可免费使用。' }]);
         return;
       }
       if (res.status === 429) {
         const j = await res.json().catch(() => null);
-        setMessages(prev => [...prev, { role: 'assistant', content: j?.error ?? '请求太频繁，请稍后再试。' }]);
+        // 只提示一次：同一限流窗口内不再追加、不刷屏；按钮禁用 + 倒计时
+        rateLimit.note429(j);
         return;
       }
       if (!res.ok) throw new Error('请求失败');
@@ -360,6 +365,8 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
 
   const sendMessage = (text: string, hidden = false) => {
     if (!text.trim() || loadingRef.current) return;
+    // 限流期间禁止再发 AI 请求（从源头上不再产生新的 429）
+    if (rateLimit.limited) return;
     loadingRef.current = true;
     setLoading(true);
 
@@ -376,7 +383,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
   };
 
   const handleTopicClick = (topicKey: string) => {
-    if (loadingRef.current) return;
+    if (loadingRef.current || rateLimit.limited) return;
     setActiveTopic(topicKey);
     sendMessage(TOPIC_PROMPTS[topicKey], true);
   };
@@ -397,7 +404,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
               <button
                 key={t.key}
                 onClick={() => handleTopicClick(t.key)}
-                disabled={loading}
+                disabled={loading || rateLimit.limited}
                 className="py-1.5 text-[10px] font-medium rounded-lg transition-all duration-150 disabled:opacity-40"
                 style={{
                   background: isActive ? 'rgba(212,168,67,0.12)' : 'transparent',
@@ -414,6 +421,14 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
 
       {/* ── Messages ── */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 min-h-0">
+
+        {/* 限流单次提示：同一窗口只出现一次，带倒计时，期间按钮禁用 */}
+        {rateLimit.notice && (
+          <div className="rounded-lg px-3 py-2 text-[11px] leading-relaxed"
+            style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}>
+            {rateLimit.notice}（请 {rateLimit.secondsLeft} 秒后再试）
+          </div>
+        )}
 
         {/* Loading state before first message */}
         {messages.length === 0 && (
@@ -485,7 +500,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="继续追问，如：今年适合换工作吗？"
-            disabled={loading}
+            disabled={loading || rateLimit.limited}
             className="flex-1 rounded-lg px-3 py-2 text-[11px] focus:outline-none transition-colors"
             style={{
               background: 'var(--t-card)',
@@ -495,7 +510,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
           />
           <button
             onClick={handleSend}
-            disabled={loading || !input.trim()}
+            disabled={loading || rateLimit.limited || !input.trim()}
             className="px-3 py-2 rounded-lg text-[11px] font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               background: 'rgba(212,168,67,0.15)',

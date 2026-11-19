@@ -492,6 +492,20 @@ export default function HomePage() {
           <ThemeToggle />
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            onClick={() => router.push('/course')}
+            className="text-[11px] sm:text-xs px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full transition-all duration-300"
+            style={{ border: `1px solid ${c.navBorder}`, color: c.textMuted }}>
+            学盘课程
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            onClick={() => router.push('/twin-star')}
+            className="text-[11px] sm:text-xs px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full transition-all duration-300"
+            style={{ border: `1px solid ${c.navBorder}`, color: c.textMuted }}>
+            双子星
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
             onClick={() => router.push('/heming')}
             className="text-[11px] sm:text-xs px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full transition-all duration-300"
             style={{ border: `1px solid ${c.navBorder}`, color: c.textMuted }}>
@@ -565,6 +579,9 @@ export default function HomePage() {
               style={{ background: c.ctaBg, color: c.ctaText }}>
               立即起盘
             </motion.button>
+            <p className="text-xs leading-relaxed" style={{ color: c.textMuted, opacity: 0.85 }}>
+              首次打开需唤醒，约 30 秒——免费服务闲置后会休眠，请稍等片刻即可进入。
+            </p>
           </motion.div>
 
           {/* 十四主星 */}
@@ -1049,7 +1066,7 @@ export default function HomePage() {
                 紫微合盘
               </h2>
               <p className="text-sm leading-relaxed mb-8 max-w-lg mx-auto" style={{ color: c.textSecond }}>
-                输入两个人的出生信息，AI 基于倪海厦体系分析夫妻宫互参、命宫兼容性与三方四正交互，<br className="hidden md:block" />
+                输入两个人的出生信息，先看免费的规则版逐宫对照与合八字，再由 AI 逐宫解读夫妻宫互参、命宫兼容性与三方四正交互，<br className="hidden md:block" />
                 给出感情匹配度、合伙可行性与最佳相处建议。
               </p>
               <div className="flex justify-center gap-3 flex-wrap mb-6">
@@ -1101,6 +1118,30 @@ export default function HomePage() {
             免费起盘
           </motion.button>
           <div className="mt-4 flex flex-wrap gap-3 justify-center">
+            <motion.a
+              href="/course"
+              whileHover={{ scale: 1.02 }}
+              className="text-xs tracking-[0.2em] inline-flex items-center gap-2 px-4 py-2 rounded-full"
+              style={{
+                color: c.goldSolid,
+                border: `1px solid ${c.goldLine}`,
+                background: 'transparent',
+                textDecoration: 'none',
+              }}>
+              ✦ 学盘课程（文字图解课） →
+            </motion.a>
+            <motion.a
+              href="/twin-star"
+              whileHover={{ scale: 1.02 }}
+              className="text-xs tracking-[0.2em] inline-flex items-center gap-2 px-4 py-2 rounded-full"
+              style={{
+                color: c.goldSolid,
+                border: `1px solid ${c.goldLine}`,
+                background: 'transparent',
+                textDecoration: 'none',
+              }}>
+              ✦ 命运双子星 →
+            </motion.a>
             <motion.a
               href="/knowledge"
               whileHover={{ scale: 1.02 }}

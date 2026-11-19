@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart, Palace, Star } from '@/lib/ziwei/types';
 import { BRANCHES, STEMS } from '@/lib/ziwei/constants';
+import { taiSui } from '@/lib/ziwei/taisui';
 import PalaceCell from './PalaceCell';
 import TimeNav, { type TimeView, getYearStemIndex, buildSiHuaOverlay } from './TimeNav';
 
@@ -74,6 +75,11 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
   })();
   const overlayLabel = timeView === 'daxian' ? '限' : timeView === 'liunian' ? '年' : undefined;
 
+  // ── 太岁入卦：排盘页中宫一行 + 太岁宫徽章；运限视图（大限/流年）下方出太岁卡片 ──
+  // 流年视图用所选流年，大限视图与本命视图用今年；卡片年份跟随所选流年。
+  const taiSuiYear = timeView === 'liunian' ? liunianYear : new Date().getFullYear();
+  const ts = taiSui(chart, taiSuiYear);
+
   const handlePalaceClick = (branch: number) => {
     const isDeselecting = selectedBranch === branch;
     setSelectedBranch(prev => prev === branch ? null : branch);
@@ -136,6 +142,7 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
                 onStarClick={(star) => onStarSelect?.(star, palace)}
                 isSelected={selectedBranch === branch}
                 isSanFang={!!(sanFangSet?.has(branch) && selectedBranch !== branch)}
+                isTaiSui={branch === ts.branch}
                 delay={i * 0.04}
                 overlayStarSiHua={Object.keys(overlayData).length > 0 ? overlayData : undefined}
                 overlayLabel={overlayLabel}
@@ -163,6 +170,9 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
               <div>命宫 <span style={{ color: 'var(--t-gold)', opacity: 0.7 }}>{BRANCHES[chart.mingGongBranch]}</span></div>
               <div>身宫 <span className="text-sky-500/70">{BRANCHES[chart.shenGongBranch]}</span></div>
               <div className="text-[9px]" style={{ color: 'var(--t-gold)', opacity: 0.75 }}>{chart.wuxingJuName}</div>
+              <div className="text-[9px]" style={{ color: 'var(--t-faint)' }}>
+                太岁：{ts.year} {ts.ganzhi}年，太岁在{ts.palaceName}（{ts.palaceGanzhi}宫）
+              </div>
             </div>
           </div>
 
@@ -260,6 +270,29 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
           )}
         </AnimatePresence>
       </div>
+
+      {/* 太岁入卦卡片（运限视图：大限 / 流年） */}
+      {timeView !== 'mingpan' && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 rounded-xl px-4 py-3"
+          style={{ border: '1px solid rgba(212,168,67,0.25)', background: 'rgba(212,168,67,0.06)' }}
+        >
+          <div className="text-[11px] font-medium mb-1" style={{ color: 'var(--t-gold)' }}>
+            太岁入卦 · {ts.year} {ts.ganzhi}年
+          </div>
+          <div className="text-[12px] leading-relaxed" style={{ color: 'var(--t-text2)' }}>
+            太岁在{ts.palaceName}（{ts.palaceGanzhi}宫）。{ts.text}
+          </div>
+          {ts.notes.map((n, i) => (
+            <div key={i} className="text-[12px] leading-relaxed mt-1" style={{ color: 'var(--t-text2)' }}>{n}</div>
+          ))}
+          <div className="text-[10px] mt-1.5" style={{ color: 'var(--t-faint)' }}>
+            太岁只管一年：今年太岁在{ts.palaceName}，明年就移到下一宫。看一年的事，太岁、流年命宫与小限要合起来看。
+          </div>
+        </motion.div>
+      )}
 
       {/* 图例 */}
       <motion.div

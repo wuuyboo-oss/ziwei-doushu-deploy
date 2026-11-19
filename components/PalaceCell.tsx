@@ -13,6 +13,8 @@ interface PalaceCellProps {
   delay?: number;
   /** 叠加四化：星名 → 四化类型（'禄'/'权'/'科'/'忌'） */
   overlayStarSiHua?: Record<string, string>;
+  /** 太岁所在宫：盘面脚标“太岁”徽章 */
+  isTaiSui?: boolean;
   /** 叠加标签：'年'（流年）或 '限'（大限） */
   overlayLabel?: string;
   /** 点击叠加四化 badge 回调 */
@@ -55,7 +57,7 @@ const SiHuaBadge = ({
 
 export default function PalaceCell({
   palace, onClick, onStarClick, isSelected, isSanFang, delay = 0,
-  overlayStarSiHua, overlayLabel, onSiHuaClick,
+  overlayStarSiHua, overlayLabel, onSiHuaClick, isTaiSui,
 }: PalaceCellProps) {
   const { branch, stem, name, stars, daXianAge, isCurrentDaXian, isMingGong, isShenGong } = palace;
   const ganzhi = `${STEMS[stem]}${BRANCHES[branch]}`;
@@ -118,6 +120,9 @@ export default function PalaceCell({
         )}
         {isShenGong && (
           <span className="text-[7px] text-sky-500/80 border border-sky-500/30 px-0.5 rounded leading-tight">身</span>
+        )}
+        {isTaiSui && (
+          <span className="text-[7px] text-amber-500 border border-amber-500/40 bg-amber-500/10 px-0.5 rounded leading-tight">太岁</span>
         )}
       </div>
 
