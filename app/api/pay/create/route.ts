@@ -1,11 +1,9 @@
 /**
- * POST /api/pay/create —— 创建支付订单（Dodo Payments 占位）
+ * POST /api/pay/create —— 付费解锁入口（手动收款码版）
  *
- * 现状：Dodo 审核中，未开通。不要编造已开通、支付链接或订单号。
- * 本接口只返回占位状态，前端据此显示“支付开通审核中，稍后再试”。
- *
- * Dodo 开通后由人工替换为真实实现：创建 Dodo 订单 → 返回 checkout 链接；
- * 再加 /api/pay/webhook 校验签名后写 paidUnlocks。
+ * 自动收款尚未接通：不返回任何支付链接或订单号，只告诉前端
+ * 走手动收款码流程（扫码付款 → 点“我已付款”提交交易单号后 6 位 →
+ * 人工核对后解锁）。不要编造已开通、已收款。
  */
 import { NextRequest } from 'next/server';
 import { normalizeScope, PRICING } from '@/lib/ziwei/commercial';
@@ -19,18 +17,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     scope = normalizeScope(body?.scope);
   } catch {
-    // 请求体解析失败也返回占位，不阻塞前端提示
+    // 请求体解析失败也返回手动收款口径，不阻塞前端提示
   }
   const price = PRICING[scope];
   return Response.json(
     {
-      status: 'pending_dodo',
-      message: '支付开通审核中',
+      status: 'manual_qr',
+      message: '手动收款码付款，人工核对后解锁',
       scope,
       price: price.price,
       currency: price.currency,
       label: price.label,
-      note: '支付开通审核中，稍后再试。规则版解读仍可免费使用。',
+      note: '请扫收款码付款后点“我已付款”提交交易单号后 6 位，人工核对后 1 小时内解锁，不是即时自动到账，请勿重复付款。规则版解读仍可免费使用。',
     },
     { status: 202 },
   );
