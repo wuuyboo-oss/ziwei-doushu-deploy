@@ -146,6 +146,15 @@ async function main() {
   const qrFiles = ['wechat-full.svg', 'wechat-single.svg', 'alipay-full.svg', 'alipay-single.svg'];
   check('收款码：4 张占位 SVG 都存在', qrFiles.every((f) => _exists(_join(process.cwd(), 'public', 'pay-qr', f))));
   check('收款码：占位图写明请勿扫码付款', qrFiles.every((f) => _read(_join(process.cwd(), 'public', 'pay-qr', f), 'utf-8').includes('请勿扫码付款')));
+  // 12b. 付费墙档位一致（2026-11-19 bug 回归）：码图文件名必须对应图内金额与档位
+  const qrText = (f: string) => _read(_join(process.cwd(), 'public', 'pay-qr', f), 'utf-8');
+  check('收款码：full 图内是 ¥19.9 全份报告', qrText('wechat-full.svg').includes('¥19.9') && qrText('wechat-full.svg').includes('全份报告') && qrText('alipay-full.svg').includes('¥19.9') && qrText('alipay-full.svg').includes('全份报告'));
+  check('收款码：single 图内是 ¥9.9 单维报告', qrText('wechat-single.svg').includes('¥9.9') && qrText('wechat-single.svg').includes('单维报告') && qrText('alipay-single.svg').includes('¥9.9') && qrText('alipay-single.svg').includes('单维报告'));
+  const paywallSrc = _read(_join(process.cwd(), 'components', 'PaywallCard.tsx'), 'utf-8');
+  check('付费墙：QrImage 档位切换会重置图源', paywallSrc.includes('useEffect') && paywallSrc.includes('setSrc(png)') && paywallSrc.includes('[png]'));
+  check('付费墙：码图按档位 key 重挂载', paywallSrc.includes('key={`wechat-${tier.kind}`}') && paywallSrc.includes('key={`alipay-${tier.kind}`}'));
+  check('付费墙：图注含档位名+金额', paywallSrc.includes('${tier.label} ¥${tier.price}'));
+  check('付费墙：顶部“本次”读当前档位不是旧 props', paywallSrc.includes('本次：{tier.label} ¥{tier.price}'));
 
   // 13. 太岁入卦：2026 丙午年太岁在午宫；1990-01-01 盘午宫为交友宫
   const { taiSui } = await import('../lib/ziwei/taisui');

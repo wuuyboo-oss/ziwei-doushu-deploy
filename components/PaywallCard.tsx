@@ -8,6 +8,11 @@ type PayScope = 'full' | 'career' | 'love';
  *
  * - 两档：全份报告 ¥19.9 / 单维（事业/感情）¥9.9，点哪个就显示对应金额的
  *   微信收款码和支付宝收款码（并排），扫码金额须与所选档位一致。
+ *   图注、图内金额、档位按钮、说明文字、“我已付款”按钮五处都读同一个
+ *   tier：切档位时码图一定跟着换（2026-11-19 修过一次 bug：QrImage 的
+ *   useState 只在挂载时取图源，切档位后图还停在旧档位，出现“选单维 ¥9.9
+ *   码图却写 ¥19.9 全份报告”；修法是 kind 一变就重置图源 + 按档位 key
+ *   重挂载）。
  * - 收款码图片在 public/pay-qr/：真码是同名 .png，没有真码时回退到 .svg
  *   占位图（占位图里写着“占位图 · 请勿扫码付款”，没有可扫的二维码）。
  *   换码方法见 public/pay-qr/README.md：替换同名图片即可，不改代码。
@@ -38,11 +43,17 @@ const TIERS: { scope: PayScope; label: string; price: number; kind: 'full' | 'si
   { scope: 'love', label: '单维 · 感情', price: 9.9, kind: 'single' },
 ];
 
-/** 收款码图：优先用真码 .png，没有真码时回退到 .svg 占位图。 */
+/** 收款码图：优先用真码 .png，没有真码时回退到 .svg 占位图。
+ * 图源必须跟着档位走：useState 只在挂载时取初值，档位切换时 kind 变了
+ * 图源不会自己变（这就是线上“选了单维 ¥9.9，码图还写 ¥19.9 全份报告”
+ * 的根因），所以 kind/channel 一变就把 src 重置回对应档位的图。 */
 function QrImage({ channel, kind, label }: { channel: 'wechat' | 'alipay'; kind: 'full' | 'single'; label: string }) {
   const png = `/pay-qr/${channel}-${kind}.png`;
   const svg = `/pay-qr/${channel}-${kind}.svg`;
   const [src, setSrc] = useState(png);
+  useEffect(() => {
+    setSrc(png);
+  }, [png]);
   return (
     <div className="flex-1 min-w-0">
       <div className="text-center text-[12px] font-medium mb-1" style={{ color: 'var(--t-text)' }}>{label}</div>
@@ -114,7 +125,7 @@ export default function PaywallCard({ scope, price, label }: { scope: PayScope; 
     >
       <div className="font-medium mb-1" style={{ color: 'var(--t-gold)' }}>解锁 AI 深度解盘全文</div>
       <div style={{ color: 'var(--t-text2)' }}>
-        首次免费试读已用完。本次：{label} ¥{price}；全份报告 ¥19.9，单维（事业/感情）¥9.9。排盘与规则版解读一直免费。
+        首次免费试读已用完。本次：{tier.label} ¥{tier.price}；全份报告 ¥19.9，单维（事业/感情）¥9.9。排盘与规则版解读一直免费。
       </div>
 
       {claimId ? (
@@ -144,10 +155,11 @@ export default function PaywallCard({ scope, price, label }: { scope: PayScope; 
             ))}
           </div>
 
-          {/* 两个收款码并排 */}
+          {/* 两个收款码并排：key 跟着档位走，档位一换两张码图整体重挂载，
+              图注、图内金额、档位三处永远是同一档（全份 ¥19.9 / 单维 ¥9.9）。 */}
           <div className="mt-3 flex gap-3">
-            <QrImage channel="wechat" kind={tier.kind} label={`微信 · ¥${tier.price}`} />
-            <QrImage channel="alipay" kind={tier.kind} label={`支付宝 · ¥${tier.price}`} />
+            <QrImage key={`wechat-${tier.kind}`} channel="wechat" kind={tier.kind} label={`微信 · ${tier.label} ¥${tier.price}`} />
+            <QrImage key={`alipay-${tier.kind}`} channel="alipay" kind={tier.kind} label={`支付宝 · ${tier.label} ¥${tier.price}`} />
           </div>
           <div className="mt-2" style={{ color: 'var(--t-text2)' }}>
             扫码付款，金额要和上面一致（{tier.label} ¥{tier.price}）。手动核对，不是即时自动到账；人工核对后 1 小时内解锁，请勿重复付款。
