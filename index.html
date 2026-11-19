@@ -346,6 +346,35 @@ dialog::backdrop { background: rgba(20, 15, 28, .45); }
 .lib-row select, .lib-row input { flex: 1 1 120px; }
 .cov { font-size: 13px; color: var(--ink-2); background: var(--sheet-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 .syn-grid { display: grid; gap: 10px; }
+/* ── 太岁 / 合八字 / 课程 ─────────────────────────── */
+.ts-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--sheet-2); margin: 8px 0; }
+.ts-card h4 { margin: 0 0 4px; color: var(--zi); font-size: 15px; }
+.ts-card p { margin: 0 0 6px; font-size: 14px; color: var(--ink-2); }
+.bazi-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13.5px; }
+.bazi-table th, .bazi-table td { border: 1px solid var(--line); padding: 5px 8px; text-align: center; }
+.bazi-table th { background: var(--sheet-2); color: var(--zi); font-weight: 700; }
+.bazi-table td:first-child { font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+.course-lesson { border: 1px solid var(--line); border-radius: 12px; background: var(--sheet-2); margin: 0 0 12px; overflow: hidden; }
+.course-lesson summary { cursor: pointer; padding: 12px 14px; font-size: 16px; font-weight: 700; color: var(--zi); list-style: none; }
+.course-lesson summary::-webkit-details-marker { display: none; }
+.course-lesson summary::before { content: "▸ "; }
+.course-lesson[open ] summary::before { content: "▾ "; }
+.course-lesson .lesson-body { padding: 0 14px 14px; }
+.course-lesson .lesson-body p { margin: 0 0 8px; font-size: 14px; color: var(--ink-2); }
+.course-lesson .lesson-body h4 { margin: 12px 0 4px; font-size: 14.5px; color: var(--zi); }
+.course-lesson .script { border-left: 3px solid var(--zi); padding: 2px 0 2px 12px; margin: 8px 0; }
+.mini-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: "p5 p6 p7 p8" "p4 c c p9" "p3 c c p10" "p2 p1 p0 p11"; gap: 1px; background: var(--line); border: 1px solid var(--line-2); margin: 8px 0; max-width: 420px; }
+.mini-board .mb-cell { background: var(--sheet); padding: 6px 4px; text-align: center; font-size: 12.5px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.mini-board .mb-cell b { font-weight: 700; color: var(--zi); }
+.mini-board .mb-cell small { color: var(--ink-3); font-size: 11px; }
+.mini-board .mb-center { grid-area: c; background: var(--sheet-2); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--ink-2); text-align: center; padding: 6px; }
+.mini-board .mb-cell.hl { background: var(--zi-soft); }
+.course-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13.5px; }
+.course-table th, .course-table td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; }
+.course-table th { background: var(--sheet-2); color: var(--zi); }
+.steps { margin: 8px 0; padding-left: 1.2em; }
+.steps li { margin: 0 0 8px; font-size: 14px; color: var(--ink-2); }
+.steps li b { color: var(--ink); }
 .star-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .star-chips button { border: 1px solid var(--line-2); background: var(--sheet); border-radius: 999px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
 @media print { .top, .board-tools, .timeline, .mobile-bar, .hero, .notices, .heart-actions, .tabs { display: none !important; } .stage { display: block; } body { background: #fff; } }
@@ -1532,7 +1561,22 @@ const Lore = (() => {
     ['疾厄合参中医', '疾厄宫星曜与五行局对应脏腑，可作调养方向的参考，不代替诊断。'],
   ];
 
-  return { ORGAN, STAR, COMBO, THEME, READ, HUA_TEXT, HUA_ESSENCE, IN_PALACE, SHA_TEXT, SHA_HEALTH, LUCKY_TEXT, SHEN, JU, DECADE_FOCUS, YEAR_FOCUS, PRINCIPLES };
+  const TAISUI = {
+    命宫: '太岁临命，今年是你当头做主的一年：自己的状态、决定与身体状况直接决定全年走向。宜主动担事，也宜稳住节奏，不宜在情绪上头时做大决定。',
+    兄弟: '太岁入兄弟宫，今年手足同辈、合伙与现金周转的事会格外多：有人来帮忙，也有人来分你的精力。合伙、借贷、作保要把账算清楚再点头。',
+    夫妻: '太岁入夫妻宫，今年感情婚姻是全年的焦点：有伴者大事多在另一半身上，单身者缘分出现得比往年明显。关系里的分歧宜摊开谈，不要冷处理。',
+    子女: '太岁入子女宫，今年子女晚辈、合作投资与桃花的事排在前面：为孩子操心的事多，合作的进出也多。投资合作要看清条款，不要只看人情。',
+    财帛: '太岁入财帛宫，今年钱是全年的主题：收入与支出同时活跃，进财的机会多，花钱的地方也多。宜把进账先留一部分下来，不要月月见底。',
+    疾厄: '太岁入疾厄宫，今年身体是第一位的：作息、旧疾与过劳最容易在这一年找上门。体检、睡眠与运动不要拖，累了就歇，不要硬扛。',
+    迁移: '太岁入迁移宫，今年利出外：出差、搬迁、换环境的机会多，在外的表现决定成绩。出门在外多留一份谨慎，证件与行程提前安排。',
+    交友: '太岁入交友宫，今年人来人往：新朋友、合作方、部属轮番登场，贵人可能出现，也可能遇到借力不成反添乱的人。交朋友、用人都要先看后信。',
+    官禄: '太岁入官禄宫，今年事业是全年的重心：工作变动、升迁、换赛道的机会都比往年多。宜把本事做实，机会来了才接得住；变动之前先留后路。',
+    田宅: '太岁入田宅宫，今年家宅的事排在前面：置产、装修、搬家或家里长辈的事都可能集中出现。买房装修多看几家，合同条款逐条看清。',
+    福德: '太岁入福德宫，今年心境变化大：想得多的事、放不下的事会反复出现。宜给自己留出休息与兴趣的时间，心稳了，事才顺。',
+    父母: '太岁入父母宫，今年与长辈上司往来多：父母的身体、长辈的嘱托、文书考试与证照的事都可能找上门。多回家看看，文书合约签字前多看一眼。',
+  };
+
+  return { ORGAN, STAR, COMBO, THEME, READ, HUA_TEXT, HUA_ESSENCE, IN_PALACE, SHA_TEXT, SHA_HEALTH, LUCKY_TEXT, SHEN, JU, DECADE_FOCUS, YEAR_FOCUS, PRINCIPLES, TAISUI };
 })();
 
 
@@ -1973,6 +2017,25 @@ const Reading = (() => {
     return { title: `${y.year} ${y.gz}年 · 虚岁 ${h.age}`, palaceName: p.name, lines: out, tone: tone(c, y.branch) };
   }
 
+  /**
+   * 太岁入卦：流年太岁为流年地支，落在本命盘地支相同的宫位。
+   * 太岁是一年之君，所到之宫就是该年最受瞩目、最易变动之处。
+   */
+  function taiSui(c, year) {
+    const yb = mod(year - 4, 12);
+    const ys = mod(year - 4, 10);
+    const p = P(c, yb);
+    const notes = [];
+    if (p.branch === c.ming) notes.push('太岁叠命宫：今年是你的当头年，自身状态决定全年，宜主动担事、稳住节奏。');
+    if (p.branch === c.shen) notes.push('太岁叠身宫：今年后天的努力方向与太岁同宫，做的事会直接影响中年以后的走向。');
+    if (mod(p.branch + 6, 12) === c.ming) notes.push('太岁在迁移宫冲命宫：今年外在环境对你的推力特别大，出外与人际的变动多。');
+    const ji = p.stars.find((s) => s.hua === '忌');
+    if (ji) notes.push(`太岁宫坐生年${ji.star}化忌：今年${p.name}所主之事最牵挂、最费心，宜正面面对、不宜逃避。`);
+    const lu = p.stars.find((s) => s.hua === '禄');
+    if (lu) notes.push(`太岁宫坐生年${lu.star}化禄：今年${p.name}所主之事有进益，机会多从这里来。`);
+    return { year, gz: STEMS[ys] + BRANCHES[yb], branch: yb, palace: p, palaceName: p.name, ganzhi: STEMS[p.stem] + BRANCHES[p.branch], text: Lore.TAISUI[p.name], notes };
+  }
+
   function health(c) {
     const ji = P(c, c.palaces.find((p) => p.name === '疾厄').branch);
     const core = palaceCore(c, ji);
@@ -2012,7 +2075,7 @@ const Reading = (() => {
     return L.join('\n');
   }
 
-  return { detectPatterns, mingSummary, huaCards, palaceDetail, decadeReading, yearReading, health, chartText, palaceCore, tone, sf };
+  return { detectPatterns, mingSummary, huaCards, palaceDetail, decadeReading, yearReading, taiSui, health, chartText, palaceCore, tone, sf };
 })();
 
 
@@ -2156,7 +2219,55 @@ const Phrase = (() => {
     return lines;
   }
 
-  return { DIMS13, LAYERS, BRIGHTS, HUAS, MAJORS14, coverageTotal, phraseFor, libraryPhrase, threePlates, xiaoLiuRen, synastry };
+  /* ══════════ 合八字：两人四柱干支对照（本系统撰写，不调用 AI） ══════════
+   * 只看干支本身的关系：天干五合 / 地支六合、三合、六冲，与五行生克。
+   * 日柱最重（日干为自己、日支为夫妻宫），年柱看长辈缘，月柱看日常相处，时柱看子女与晚年。 */
+  const STEM_WX = { 甲: '木', 乙: '木', 丙: '火', 丁: '火', 戊: '土', 己: '土', 庚: '金', 辛: '金', 壬: '水', 癸: '水' };
+  const BRANCH_WX = { 子: '水', 丑: '土', 寅: '木', 卯: '木', 辰: '土', 巳: '火', 午: '火', 未: '土', 申: '金', 酉: '金', 戌: '土', 亥: '水' };
+  const ZODIAC = { 子: '鼠', 丑: '牛', 寅: '虎', 卯: '兔', 辰: '龙', 巳: '蛇', 午: '马', 未: '羊', 申: '猴', 酉: '鸡', 戌: '狗', 亥: '猪' };
+  const STEM_HE = [['甲', '己'], ['乙', '庚'], ['丙', '辛'], ['丁', '壬'], ['戊', '癸']];
+  const BRANCH_HE = [['子', '丑'], ['寅', '亥'], ['卯', '戌'], ['辰', '酉'], ['巳', '申'], ['午', '未']];
+  const BRANCH_SANHE = [['申', '子', '辰'], ['寅', '午', '戌'], ['巳', '酉', '丑'], ['亥', '卯', '未']];
+  const BRANCH_CHONG = [['子', '午'], ['丑', '未'], ['寅', '申'], ['卯', '酉'], ['辰', '戌'], ['巳', '亥']];
+  const WX_SHENG = { 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' };
+  const WX_KE = { 木: '土', 土: '水', 水: '火', 火: '金', 金: '木' };
+  const pairIn = (list, a, b) => list.some((g) => g.includes(a) && g.includes(b));
+
+  function baziMatch(c1, c2) {
+    const cols = [['年柱', 'year'], ['月柱', 'month'], ['日柱', 'day'], ['时柱', 'hour']];
+    let score = 0;
+    const rows = cols.map(([label, key]) => {
+      const a = c1.bazi[key], b = c2.bazi[key];
+      const as = a[0], ab = a[1], bs = b[0], bb = b[1];
+      let stemRel = '', branchRel = '';
+      if (as === bs) { stemRel = '同干'; }
+      else if (pairIn(STEM_HE, as, bs)) { stemRel = '天干五合'; score += 1; }
+      else if (WX_SHENG[STEM_WX[as]] === STEM_WX[bs]) { stemRel = `天干相生（${STEM_WX[as]}生${STEM_WX[bs]}）`; score += 1; }
+      else if (WX_SHENG[STEM_WX[bs]] === STEM_WX[as]) { stemRel = `天干相生（${STEM_WX[bs]}生${STEM_WX[as]}）`; score += 1; }
+      else if (WX_KE[STEM_WX[as]] === STEM_WX[bs] || WX_KE[STEM_WX[bs]] === STEM_WX[as]) { stemRel = `天干相克（${STEM_WX[as]}克${STEM_WX[bs]}）`; score -= 1; }
+      else stemRel = '天干无合克';
+      if (ab === bb) { branchRel = '同支'; }
+      else if (pairIn(BRANCH_HE, ab, bb)) { branchRel = '地支六合'; score += 2; }
+      else if (BRANCH_SANHE.some((g) => g.includes(ab) && g.includes(bb))) { branchRel = '地支三合'; score += 1; }
+      else if (pairIn(BRANCH_CHONG, ab, bb)) { branchRel = '地支六冲'; score -= 2; }
+      else if (WX_SHENG[BRANCH_WX[ab]] === BRANCH_WX[bb] || WX_SHENG[BRANCH_WX[bb]] === BRANCH_WX[ab]) { branchRel = '地支相生'; score += 1; }
+      else if (WX_KE[BRANCH_WX[ab]] === BRANCH_WX[bb] || WX_KE[BRANCH_WX[bb]] === BRANCH_WX[ab]) { branchRel = '地支相克'; score -= 1; }
+      else branchRel = '地支无合冲';
+      return { label, a, b, stemRel, branchRel, aWx: `${STEM_WX[as]}${BRANCH_WX[ab]}`, bWx: `${STEM_WX[bs]}${BRANCH_WX[bb]}` };
+    });
+    const day = rows[2];
+    const lines = [];
+    lines.push(`年柱：一方${rows[0].a}（${ZODIAC[rows[0].a[1]]}年）、另一方${rows[0].b}（${ZODIAC[rows[0].b[1]]}年），${rows[0].stemRel}、${rows[0].branchRel}——年柱看两家人的缘分与长辈态度，合则长辈好相处，冲则两家观念容易顶牛。`);
+    lines.push(`月柱：${rows[1].stemRel}、${rows[1].branchRel}——月柱看婚后日常相处与生活节奏，合则日子顺，冲则小事容易拌嘴。`);
+    const dayNote = day.branchRel === '地支六冲' ? '日支相冲是合八字里最要留意的一处：夫妻宫逢冲，感情容易因小事起波澜，宜多包容、少在气头上说话。' : day.branchRel === '地支六合' ? '日支六合：夫妻宫相合，两个人过日子合拍，吵了也容易和好。' : day.branchRel === '地支三合' ? '日支三合：夫妻宫相合，两个人目标一致，越过越有奔头。' : '日支既不合也不冲：夫妻相处平淡实在，合不合拍更多看两张紫微盘的夫妻宫。';
+    lines.push(`日柱最重：日干是自己（一方日干${c1.bazi.day[0]}${STEM_WX[c1.bazi.day[0]]}、另一方日干${c2.bazi.day[0]}${STEM_WX[c2.bazi.day[0]]}），${day.stemRel}；日支是夫妻宫，${day.branchRel}。${dayNote}`);
+    lines.push(`时柱：${rows[3].stemRel}、${rows[3].branchRel}——时柱看子女缘与晚年，合则晚年安稳，冲则晚年多为子女操心。`);
+    const verdict = score >= 4 ? '四柱对照以合为主：先天节奏合拍，相处省力；但合多也可能互相迁就，遇事还是要把话说开。' : score >= 1 ? '四柱对照合冲参半：合的地方是相处的基础，冲的地方是需要磨合的功课，磨合好了反而更稳。' : score >= -2 ? '四柱对照冲多于合：先天节奏不太一样，相处要多一分耐心与让步；感情好不好，最终还要看两张紫微盘的夫妻宫与大限流年。' : '四柱对照冲较多：先天节奏差异大，两个人都要学会让步；只凭合八字不能断婚姻，务必再对照两张紫微盘的夫妻宫与生年四化。';
+    lines.push(verdict);
+    return { rows, score, verdict, lines };
+  }
+
+  return { DIMS13, LAYERS, BRIGHTS, HUAS, MAJORS14, coverageTotal, phraseFor, libraryPhrase, threePlates, xiaoLiuRen, synastry, baziMatch };
 })();
 
 /* ===== cities.js ===== */
@@ -2446,6 +2557,7 @@ const CITIES = (() => {
     const curDx = ZW.daxianAtAge(c, S.nowAge);
     const xiaoB = S.nowHoro?.year?.xiaoxian ?? null;
     const djB = c ? mod(mod(todayLunar.year - 4, 12) + c.douJunOffset, 12) : null;
+    const tsB = mod(todayLunar.year - 4, 12); // 流年太岁支所在本命宫
     for (let b = 0; b < 12; b++) {
       const p = c.palaces[b];
       const el = palEls[b];
@@ -2474,7 +2586,7 @@ const CITIES = (() => {
       el.querySelector('.body').innerHTML = `
         <div class="stars">${cols || (p.isEmpty && p.borrow.stars.length ? `<span class="st minor" title="空宫借对宫"><b>借</b>${p.borrow.stars.map((n) => `<b>${n[0]}</b>`).join('')}</span>` : '')}</div>
         ${minorHtml}${flows}${tags ? `<div class="tags">${tags}</div>` : ''}${extra}
-        <div class="foot"><span class="dx${isNowDx ? ' now' : ''}">${p.daxian[0]}–${p.daxian[1]}</span><span class="pname">${p.name}${p.isShen ? '<span class="shen" title="身宫">身</span>' : ''}</span><span class="gz">${STEMS[p.stem]}${BRANCHES[p.branch]}</span>${b === xiaoB ? '<span class="mark" title="小限在此宫">小限</span>' : ''}${b === djB ? '<span class="mark" title="流年斗君在此宫">斗君</span>' : ''}</div>`;
+        <div class="foot"><span class="dx${isNowDx ? ' now' : ''}">${p.daxian[0]}–${p.daxian[1]}</span><span class="pname">${p.name}${p.isShen ? '<span class="shen" title="身宫">身</span>' : ''}</span><span class="gz">${STEMS[p.stem]}${BRANCHES[p.branch]}</span>${b === xiaoB ? '<span class="mark" title="小限在此宫">小限</span>' : ''}${b === djB ? '<span class="mark" title="流年斗君在此宫">斗君</span>' : ''}${b === tsB ? '<span class="mark" title="流年太岁在此宫">太岁</span>' : ''}</div>`;
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0');
       el.setAttribute('aria-label', `${p.name}，${STEMS[p.stem]}${BRANCHES[p.branch]}宫，${p.stars.filter((s) => s.type !== 'minor').map((s) => s.name + (s.hua ? '化' + s.hua : '')).join('、') || '无主星'}`);
@@ -2524,6 +2636,7 @@ const CITIES = (() => {
     const solar = t.mode === 'clock' && inp.trueSolar !== false ? `${t.solar.y}-${pad(t.solar.m)}-${pad(t.solar.d)} ${pad(Math.floor(t.solar.minutes / 60))}:${pad(t.solar.minutes % 60)} <small>经度${fmtMin(t.lonMin)} 均时差${fmtMin(t.eotMin)}</small>` : '';
     const dx = ZW.daxianAtAge(c, S.nowAge);
     const yh = S.nowHoro?.year;
+    const tsNow = Reading.taiSui(c, todayLunar.year);
     heart.innerHTML = `
       <h2 class="who"><strong>${esc(name)}</strong><span>${c.isYang ? '阳' : '阴'}${inp.gender === 'male' ? '男' : '女'}　${c.juName}　${c.nayin}</span></h2>
       <dl class="facts">
@@ -2533,6 +2646,7 @@ const CITIES = (() => {
         <dt>八字</dt><dd class="pillars">${c.bazi.year} ${c.bazi.month} ${c.bazi.day} ${c.bazi.hour}</dd>
         <dt>命主</dt><dd>${c.mingZhu}　<span style="color:var(--ink-3)">身主</span> ${c.shenZhu}</dd>
         ${dx ? `<dt>当前</dt><dd>大限 ${dx.start}–${dx.end} 岁（${dx.natalName}）<br>流年 ${todayLunar.year} ${yh.gz}，虚岁 ${S.nowAge}</dd>` : ''}
+        <dt>太岁</dt><dd>${todayLunar.year} ${tsNow.gz}年，太岁在${tsNow.palaceName}（${tsNow.ganzhi}宫）</dd>
       </dl>
       <div class="heart-actions">
         <button type="button" class="ghost-btn" data-act="edit">修改资料</button>
@@ -2603,7 +2717,7 @@ const curDx = ZW.daxianAtAge(c, S.nowAge);
     }
     const xiao = c.palaces.find((p) => p.xiaoxian && p.xiaoxian.includes(S.nowAge));
 const dj = h && h.month ? BRANCHES[h.month.douJun] : (S.nowHoro && S.nowHoro.month ? BRANCHES[S.nowHoro.month.douJun] : '');
-const head = `<div class="tl-head"><button type="button" class="tl-now" id="tlNow">回到今年</button>当前：大限 <b>${curDx ? `${curDx.start}–${curDx.end} 岁 · ${curDx.natalName}` : '—'}</b>　流年 <b>${todayLunar.year} 年（${S.nowHoro && S.nowHoro.year ? S.nowHoro.year.gz : ''}）</b>　小限在<b>${xiao ? xiao.name : '—'}</b>${dj ? `　流年斗君在<b>${dj}宫</b>` : ''}</div>`;
+const head = `<div class="tl-head"><button type="button" class="tl-now" id="tlNow">回到今年</button>当前：大限 <b>${curDx ? `${curDx.start}–${curDx.end} 岁 · ${curDx.natalName}` : '—'}</b>　流年 <b>${todayLunar.year} 年（${S.nowHoro && S.nowHoro.year ? S.nowHoro.year.gz : ''}）</b>　小限在<b>${xiao ? xiao.name : '—'}</b>${dj ? `　流年斗君在<b>${dj}宫</b>` : ''}　太岁在<b>${c.palaces[mod(todayLunar.year - 4, 12)].name}</b></div>`;
 nav.innerHTML = head + html;
 nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.index : undefined, year: todayLunar.year }); };
     nav.querySelector('[data-natal]').onclick = () => setSel({});
@@ -2631,10 +2745,10 @@ nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.ind
   }
 
   /* ─────────── reading panel ─────────── */
-  const TABS = [['summary', '总论'], ['dims', '十三维'], ['palace', '宫位'], ['pattern', '格局'], ['hua', '四化'], ['luck', '运限'], ['health', '体质'], ['syn', '合盘'], ['liuren', '小六壬'], ['lore', '学盘·断语库'], ['ai', 'AI 解盘']];
+  const TABS = [['summary', '总论'], ['dims', '十三维'], ['palace', '宫位'], ['pattern', '格局'], ['hua', '四化'], ['luck', '运限'], ['health', '体质'], ['syn', '合盘'], ['liuren', '小六壬'], ['lore', '学盘·断语库'], ['course', '学盘课程'], ['ai', 'AI 解盘']];
   function renderTabs() {
     const box = $('#tabs');
-    if (!S.chart) { box.innerHTML = ''; return; }
+    if (!S.chart) { box.innerHTML = `<button class="tab" role="tab" aria-selected="${S.tab === 'course'}" data-tab="course">学盘课程</button>`; box.querySelector('[data-tab]').onclick = () => { S.tab = 'course'; renderTabs(); renderPanel(); $('#panel').scrollTop = 0; }; return; }
     box.innerHTML = TABS.map(([k, t]) => `<button class="tab" role="tab" aria-selected="${S.tab === k}" data-tab="${k}">${t}</button>`).join('');
     box.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { S.tab = b.dataset.tab; renderTabs(); renderPanel(); $('#panel').scrollTop = 0; });
   }
@@ -2645,12 +2759,13 @@ nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.ind
     const panel = $('#panel');
     const c = S.chart;
     if (!c) {
+      if (S.tab === 'course') { panel.innerHTML = pCourse(null); return; }
       panel.innerHTML = `<h2>读盘心法</h2><p class="muted">本系统按倪海厦《天纪》的读盘立场组织断语。起盘之后，这里会依次给出总论、宫位、格局、四化、运限与体质分析。</p>
         ${Lore.PRINCIPLES.map(([h, p]) => `<div class="principle"><h4>${h}</h4><p>${p}</p></div>`).join('')}
         <p class="disclaimer">排盘引擎为自研实现：历法由天文算法推得并与通行历表逐年核对，时辰按出生地真太阳时（经度时差加均时差）判定。命理解读仅供参考。</p>`;
       return;
     }
-    const fn = { summary: pSummary, dims: pDims, palace: pPalace, pattern: pPattern, hua: pHua, luck: pLuck, health: pHealth, syn: pSyn, liuren: pLiuren, lore: pLore, ai: pAi }[S.tab] || pSummary;
+    const fn = { summary: pSummary, dims: pDims, palace: pPalace, pattern: pPattern, hua: pHua, luck: pLuck, health: pHealth, syn: pSyn, liuren: pLiuren, lore: pLore, course: pCourse, ai: pAi }[S.tab] || pSummary;
     panel.innerHTML = fn(c);
     if (S.tab === 'ai') wireAi();
     if (S.tab === 'syn') wireSyn();
@@ -2732,6 +2847,9 @@ nav.querySelector('#tlNow').onclick = () => { setSel({ decade: curDx ? curDx.ind
     if (h?.month) html += `<h3>流月 ${MONTH_CN[h.month.month - 1]}月（${h.month.gz}）</h3><p>流年斗君在${BRANCHES[h.month.douJun]}宫。流月命宫落本命${c.palaces[h.month.branch].name}：${Lore.YEAR_FOCUS[c.palaces[h.month.branch].name].replace('今年', '本月')}</p>`;
     if (h?.day) html += `<h3>流日 ${DAY_CN(h.day.day)}${h.day.gz ? `（${h.day.gz}日${h.daySolar ? `，公历 ${h.daySolar.m}月${h.daySolar.d}日` : ''}）` : ''}</h3><p>流日命宫落本命${c.palaces[h.day.branch].name}。</p>`;
     if (h?.hour) html += `<h3>流时 ${ZW.HOURS[h.hour.hour]}时（${h.hour.gz}）</h3><p>流时命宫落本命${c.palaces[h.hour.branch].name}：${Lore.YEAR_FOCUS[c.palaces[h.hour.branch].name].replace('今年', '此时')}</p>`;
+    const tsYear = h?.year?.year || todayLunar.year;
+    const ts = Reading.taiSui(c, tsYear);
+    html += `<h3>太岁入卦 · ${ts.year} ${ts.gz}年</h3><div class="ts-card"><h4>太岁在${ts.palaceName}（${ts.ganzhi}宫）</h4><p>太岁为流年地支，是一年之君；太岁落在本命盘地支相同的宫位，所到之宫就是该年最受瞩目、最易变动之处。</p><p>${ts.text}</p>${ts.notes.map((n) => `<p>${n}</p>`).join('')}<p class="muted">太岁只管一年：今年太岁在${ts.palaceName}，明年就移到下一宫。看一年的事，太岁、流年命宫与小限要合起来看。</p></div>`;
     const plates = Phrase.threePlates(c, h);
     html += `<h3>天地人三盘</h3><div class="plates">${plates.map((x) => `<div class="plate-card"><h4>${x.title}</h4><p>${x.line}</p><p class="muted">${x.detail}</p></div>`).join('')}</div>`;
     if (S.settings.flowHua === 'on' && h) {
@@ -2803,9 +2921,17 @@ function pSyn(c) {
   const res = s2 ? (() => {
     const lines = Phrase.synastry(c, s2.chart);
     const m2 = Reading.mingSummary(s2.chart);
-    return `<h3>合盘结果</h3><p class="muted">对方：${s2.input.name || (s2.input.gender === 'male' ? '乾造' : '坤造')} ${s2.input.year}-${s2.input.month}-${s2.input.day} ${ZW.HOURS[s2.chart.hour]}时，命宫${m2.core.names.join('、') || '无主星'}坐命。</p><ul class="lines-list">${lines.map((l) => `<li>${l}</li>`).join('')}</ul><p class="disclaimer">合盘为规则对比（本命对照），未调用 AI，仅供参考。</p>`;
+    const bz = Phrase.baziMatch(c, s2.chart);
+    return `<h3>合盘结果</h3><p class="muted">对方：${s2.input.name || (s2.input.gender === 'male' ? '乾造' : '坤造')} ${s2.input.year}-${s2.input.month}-${s2.input.day} ${ZW.HOURS[s2.chart.hour]}时，命宫${m2.core.names.join('、') || '无主星'}坐命。</p><ul class="lines-list">${lines.map((l) => `<li>${l}</li>`).join('')}</ul>
+    <h3>合八字 · 四柱干支对照</h3>
+    <p class="muted">只看两人八字四柱本身的干支关系：天干五合、地支六合与三合为合，地支六冲与干支相克为冲。日柱最重（日干为自己、日支为夫妻宫）。</p>
+    <table class="bazi-table"><thead><tr><th></th><th>你（${c.bazi.year}年生）</th><th>对方（${s2.chart.bazi.year}年生）</th><th>天干</th><th>地支</th></tr></thead><tbody>
+    ${bz.rows.map((r) => `<tr><td>${r.label}</td><td>${r.a}<br><small>${r.aWx}</small></td><td>${r.b}<br><small>${r.bWx}</small></td><td>${r.stemRel}</td><td>${r.branchRel}</td></tr>`).join('')}
+    </tbody></table>
+    <ul class="lines-list">${bz.lines.map((l) => `<li>${l}</li>`).join('')}</ul>
+    <p class="disclaimer">合盘与合八字均为规则对比（本命对照），未调用 AI，仅供参考；合八字只看干支合冲，不能单独断婚姻，须再对照两张紫微盘的夫妻宫与生年四化。</p>`;
   })() : '';
-  return `<h2>合盘</h2><p class="muted">输入对方的出生资料，起第二张盘对照：两人的命宫、夫妻宫与生年四化。合盘只看本命，不含流年推运。</p>
+  return `<h2>合盘</h2><p class="muted">输入对方的出生资料，起第二张盘对照：两人的命宫、夫妻宫与生年四化；下面还会对照两人的八字四柱（合八字），看天干五合、地支六合三合与六冲。合盘只看本命，不含流年推运。</p>
   <div class="syn-grid">
     <div class="row"><label class="k" for="synName">对方</label><input class="field" id="synName" placeholder="可不填" maxlength="16"></div>
     <div class="row"><span class="k">性别</span><div class="seg" role="group"><button type="button" data-syngender="male" aria-pressed="true">男</button><button type="button" data-syngender="female" aria-pressed="false">女</button></div></div>
@@ -2814,6 +2940,60 @@ function pSyn(c) {
     <button class="btn" id="synGo" type="button">起对方的盘并合盘</button>
   </div>
   <div id="synOut">${res}</div>`;
+}
+/* ─────────── 学盘课程：文字图解课（没有视频） ─────────── */
+function pCourse(c) {
+  const boardCells = Array.from({ length: 12 }, (_, b) => {
+    const p = c ? c.palaces[b] : null;
+    return `<div class="mb-cell" style="grid-area:p${b}"><b>${p ? p.name : BRANCHES[b]}</b><small>${p ? STEMS[p.stem] + BRANCHES[p.branch] : '地支'}</small></div>`;
+  }).join('');
+  const boardNote = c ? '下图就是你这张盘的十二宫排布：命宫在哪里，兄弟、夫妻就依次排在它旁边。' : '下图先用地支标出十二个格子的位置；起一张盘之后，这里会换成你那张盘真正的十二宫。';
+  const starRows = ZW.MAJOR.map((n) => { const s = Lore.STAR[n]; return `<tr><td><b>${n}</b></td><td>${s.wx}</td><td>${s.qi}</td><td>${s.key}</td></tr>`; }).join('');
+  const sihuaRows = STEMS.map((st, i) => `<tr><td><b>${st}年</b></td>${ZW.SIHUA[i].map((n) => `<td>${n}</td>`).join('')}</tr>`).join('');
+  const lesson = (open, title, body) => `<details class="course-lesson"${open ? ' open' : ''}><summary>${title}</summary><div class="lesson-body">${body}</div></details>`;
+  return `<h2>学盘课程</h2>
+  <p class="muted">六课文字图解课，跟着文字一步步看就能入门：先认十二宫，再认主星与四化，最后学会自己走一遍看盘步骤。<b>本课程只有文字和图解，没有视频</b>，也不引用任何他人的课程视频；讲稿全部由本系统用自己的话撰写。</p>
+  ${lesson(true, '第一课 · 十二宫——一张盘的十二个房间', `
+    <div class="script"><p>一张紫微盘就像一间有十二个房间的房子：命宫是客厅，住着你这个人；财帛是账房，管钱；夫妻是卧室，管感情；官禄是书房，管事业。看盘不是先背星，而是先认清这十二个房间各管什么。</p>
+    <p>十二宫从命宫起，依次是：命宫、兄弟、夫妻、子女、财帛、疾厄、迁移、交友、官禄、田宅、福德、父母。命宫在哪里，要看出生时辰排出来的结果——命宫一动，十二宫跟着整体转动，所以每张盘的宫位排布都不一样。</p></div>
+    <h4>图解：十二宫排布</h4>
+    <div class="mini-board">${boardCells}<div class="mb-center">中宫<br>命主 · 身主</div></div>
+    <p>${boardNote}</p>
+    <p>记住三组对宫就记住了一半：命宫对迁移宫（自己对外的样子），夫妻对官禄（感情与事业互相牵动），财帛对福德（钱的问题最后回到心性）。</p>`)}
+  ${lesson(false, '第二课 · 十四主星——星曜的性格', `
+    <div class="script"><p>主星是宫里住的人，性格各不相同。紫微像皇帝，要面子、爱做主；天机像军师，脑子快、想法多；天同像孩子，温和爱享受；七杀像将军，敢冲敢拼。先记住每颗星的一句话，再慢慢看它落在哪个宫、亮不亮、有没有化。</p>
+    <p>同一颗星落在命宫和落在财帛宫，意思完全不同：紫微坐命是“你像个做主的人”，紫微在财帛是“你花钱要体面、赚钱靠管人”。所以看星一定要连宫一起看。</p></div>
+    <h4>图解：十四主星速查</h4>
+    <table class="course-table"><thead><tr><th>主星</th><th>五行</th><th>化气</th><th>一句话</th></tr></thead><tbody>${starRows}</tbody></table>
+    <p>点盘面上的任何一颗星，都能看到它在本盘里的具体解释。</p>`)}
+  ${lesson(false, '第三课 · 四化——禄、权、科、忌', `
+    <div class="script"><p>四化是星曜的“状态”：禄是得到，权是掌握，科是名声，忌是执着。哪颗星化什么，由出生那年的天干决定，一生固定不变——这就是本站按倪师《天纪》立场采用的读法：四化以生年干为本。</p>
+    <p>比如甲年生人，廉贞化禄、破军化权、武曲化科、太阳化忌。化忌不要只当坏事看：化忌所在的宫，是你一生最在意、最放不下的地方，也是此生要下的功课。</p></div>
+    <h4>图解：十天干生年四化表</h4>
+    <table class="course-table"><thead><tr><th>年干</th><th>化禄</th><th>化权</th><th>化科</th><th>化忌</th></tr></thead><tbody>${sihuaRows}</tbody></table>
+    <p>看盘时先找四化：四化落在哪一宫，哪一宫的事就最牵动你。</p>`)}
+  ${lesson(false, '第四课 · 三方四正与空宫借星', `
+    <div class="script"><p>一宫的好坏不能只看本宫。命宫要连财帛、官禄、迁移一起看：财帛看你赚钱的路子，官禄看你做事的舞台，迁移看你在人前的样子——这四个宫合起来叫三方四正，命宫的高低由它们合参。</p>
+    <p>如果本宫没有主星，就是空宫：不用慌，借对宫的主星来看，只是力量打折，个性也更容易受环境影响。空宫多的人，一生受环境与身边人的影响更大。</p></div>
+    <h4>图解：以命宫为例的三方四正</h4>
+    <table class="course-table"><thead><tr><th>本宫</th><th>三合</th><th>三合</th><th>对宫</th></tr></thead><tbody><tr><td><b>命宫</b></td><td>财帛宫</td><td>官禄宫</td><td>迁移宫</td></tr></tbody></table>
+    <p>点盘面上的任何一宫，下方「宫位」页签会列出它的三方四正，以及三方共见几颗煞星、几颗吉星。</p>`)}
+  ${lesson(false, '第五课 · 看盘五步', `
+    <div class="script"><p>拿到一张盘不知道从哪看起，就按这五步走，一步都不要跳。第一步决定了整张盘的调子，后面几步都是在这个调子上加细节。</p></div>
+    <ol class="steps">
+      <li><b>看命宫主星。</b>先看命宫坐什么星、亮不亮：这是先天个性与一生格局的底色。命宫无主星就借对宫。</li>
+      <li><b>看三方四正。</b>命、财、官、迁四个宫合起来看，判断格局高低与一生的主线。</li>
+      <li><b>看生年四化。</b>禄权科忌各落在哪一宫：得到在哪里，执着在哪里，一眼就有。</li>
+      <li><b>看格局与身宫。</b>有没有古书格局、破格条件是什么；身宫在哪一宫，后天的重心就在哪。</li>
+      <li><b>看运限。</b>大限看十年环境，流年看一年事项；运走到哪一宫，就看该宫的本命星曜与生年四化。</li>
+    </ol>
+    <p>五步走完，一张盘的大意就有了；细节再去「十三维」「宫位」「格局」页签里慢慢看。</p>`)}
+  ${lesson(false, '第六课 · 大限、流年与太岁', `
+    <div class="script"><p>本命盘是不变的底子，运限是时间推着你走的路。大限十年一换，看的是这十年的环境与主题；流年一年一换，看的是这一年的具体事项；小限与流年斗君是更细的刻度。</p>
+    <p>太岁是流年的地支，是一年之君：太岁落在本命盘的哪一宫，哪一宫就是该年最受瞩目、最易变动的地方。今年太岁在哪一宫，可以在排盘结果的中宫与「运限」页签的“太岁入卦”里看到；选一个流年，太岁入卦会跟着那一年变。</p></div>
+    <h4>怎么看</h4>
+    <p>在命盘下方的时间轴上点一个大限，再点其中一年：盘面会标出大限与流年命宫，运限页会给出那一年太岁入卦、大限与流年的解读。先看大限定方向，再看流年定轻重。</p>`)}
+  <p class="disclaimer">课程内容由本系统用自己的话撰写，仅供学习参考。紫微斗数是传统命理学说，解读仅供参考，不构成医疗、投资、法律建议。</p>`;
 }
 function pLiuren(c) {
   const lm = todayLunar.month, ld = todayLunar.day;
@@ -3304,6 +3484,7 @@ const last = fromHash ? null : store.get('saved', [])[0];
   if (last) restore(last.s);
   updateLonNote();
   placeForm();
+  renderTabs();
   renderPanel();
   if (fromHash || last) compute(true);
   initCaps();
